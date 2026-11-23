@@ -2,11 +2,14 @@ import { CalendarCheck2, RefreshCw, ShieldAlert } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import * as hireApi from '../../api/hireApi';
+import * as reviewApi from '../../api/reviewApi';
 import { AlertBanner } from '../../components/ui/AlertBanner';
 import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../context/useAuth';
 import { useWebSocket } from '../../context/useWebSocket';
 import { getTodayDhakaDateString } from '../../utils/dhakaTime';
+import { PendingReviewsBanner } from '../feedback/PendingReviewsBanner';
+import { ReviewFormModal } from '../feedback/ReviewFormModal';
 import { ContractCard } from './ContractCard';
 import { ContractReasonModal } from './ContractReasonModal';
 
@@ -16,6 +19,9 @@ const CONTRACT_EVENTS = new Set([
   'HIRE_DECLINED',
   'CONTRACT_CANCELLED',
   'CONTRACT_ENDED_EARLY',
+  'CONTRACT_ACTIVATED',
+  'CONTRACT_COMPLETED_FEEDBACK_READY',
+  'REVIEW_RECEIVED',
 ]);
 
 const BOOKING_TABS = [
@@ -36,6 +42,7 @@ export function CaretakerBookingsPage() {
 
   const [activeTab, setActiveTab] = useState('ACTIVE_SCHEDULED');
   const [contracts, setContracts] = useState([]);
+  const [authoredReviews, setAuthoredReviews] = useState([]);
   const [todaySchedule, setTodaySchedule] = useState(null);
   const [loading, setLoading] = useState(!isUnverified);
   const [error, setError] = useState('');
@@ -43,6 +50,7 @@ export function CaretakerBookingsPage() {
 
   const [modalState, setModalState] = useState(null);
   const [modalError, setModalError] = useState('');
+  const [activeReviewModal, setActiveReviewModal] = useState(null);
   const [busyId, setBusyId] = useState(null);
 
   const loadBookings = useCallback(
@@ -57,12 +65,14 @@ export function CaretakerBookingsPage() {
       setError('');
       try {
         const selected = BOOKING_TABS.find((t) => t.key === activeTab);
-        const [data, schedule] = await Promise.all([
+        const [data, schedule, authored] = await Promise.all([
           hireApi.fetchMyHires(selected?.statuses || []),
           hireApi.fetchCaretakerDaySchedule(user.id, getTodayDhakaDateString()).catch(() => null),
+          reviewApi.fetchAuthoredReviews().catch(() => []),
         ]);
         setContracts(data);
         setTodaySchedule(schedule);
+        setAuthoredReviews(authored);
       } catch (err) {
         setError(err.message || 'Could not load your bookings right now.');
       } finally {
@@ -71,6 +81,15 @@ export function CaretakerBookingsPage() {
     },
     [activeTab, isUnverified, user?.id]
   );
+
+  const pendingReviews = authoredReviews.filter((r) => !r.submitted);
+
+  function handleOpenContractFeedback(contract) {
+    const matched = authoredReviews.find((r) => r.id === contract.myReviewId);
+    if (matched) {
+      setActiveReviewModal(matched);
+    }
+  }
 
   useEffect(() => {
     loadBookings();
@@ -186,6 +205,10 @@ export function CaretakerBookingsPage() {
       </div>
 
       {feedback && <AlertBanner variant="success">{feedback}</AlertBanner>}
+      <PendingReviewsBanner
+        pendingReviews={pendingReviews}
+        onOpenReview={(review) => setActiveReviewModal(review)}
+      />
       {error && (
         <AlertBanner variant="error" title="Could not load bookings">
           <div className="space-y-2">
@@ -236,6 +259,7 @@ export function CaretakerBookingsPage() {
                 setModalError('');
                 setModalState({ mode: 'endEarly', contract: target });
               }}
+              onOpenFeedback={handleOpenContractFeedback}
             />
           ))}
         </div>
@@ -249,6 +273,22 @@ export function CaretakerBookingsPage() {
           error={modalError}
           onClose={() => setModalState(null)}
           onConfirm={handleConfirmModal}
+        />
+      )}
+
+      {activeReviewModal && (
+        <ReviewFormModal
+          review={activeReviewModal}
+          onClose={() => setActiveReviewModal(null)}
+          onSaved={(saved) => {
+            setActiveReviewModal(null);
+            setFeedback(
+              saved.edited
+                ? `Updated your feedback for ${saved.revieweeName} (marked as Edited).`
+                : `Submitted your ${saved.rating}-star feedback for ${saved.revieweeName}.`
+            );
+            loadBookings({ silent: true });
+          }}
         />
       )}
     </div>

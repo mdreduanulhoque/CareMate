@@ -13,6 +13,9 @@ import com.carebridge.common.ConflictException;
 import com.carebridge.common.ForbiddenException;
 import com.carebridge.common.NotFoundException;
 import com.carebridge.common.TransactionCommitHooks;
+import com.carebridge.feedback.FeedbackAggregateService;
+import com.carebridge.feedback.Review;
+import com.carebridge.feedback.ReviewRepository;
 import com.carebridge.notification.RealtimeEventDispatcher;
 import com.carebridge.notification.dto.FeedAvailabilityEvent;
 import com.carebridge.notification.dto.UserNotificationEvent;
@@ -50,6 +53,8 @@ public class HiringTransactionalService {
     private final CaretakerProfileRepository caretakerProfileRepository;
     private final ContactUnlockRepository contactUnlockRepository;
     private final UserRepository userRepository;
+    private final ReviewRepository reviewRepository;
+    private final FeedbackAggregateService feedbackAggregateService;
     private final RealtimeEventDispatcher realtimeEventDispatcher;
     private final EntityManager entityManager;
 
@@ -58,6 +63,8 @@ public class HiringTransactionalService {
             CaretakerProfileRepository caretakerProfileRepository,
             ContactUnlockRepository contactUnlockRepository,
             UserRepository userRepository,
+            ReviewRepository reviewRepository,
+            FeedbackAggregateService feedbackAggregateService,
             RealtimeEventDispatcher realtimeEventDispatcher,
             EntityManager entityManager
     ) {
@@ -65,6 +72,8 @@ public class HiringTransactionalService {
         this.caretakerProfileRepository = caretakerProfileRepository;
         this.contactUnlockRepository = contactUnlockRepository;
         this.userRepository = userRepository;
+        this.reviewRepository = reviewRepository;
+        this.feedbackAggregateService = feedbackAggregateService;
         this.realtimeEventDispatcher = realtimeEventDispatcher;
         this.entityManager = entityManager;
     }
@@ -347,6 +356,10 @@ public class HiringTransactionalService {
         contract.endEarly(actor, reason, now);
         HireContract saved = hireContractRepository.saveAndFlush(contract);
 
+        // Immediately & idempotently generate dual pending feedback forms and refresh completed hires count
+        feedbackAggregateService.ensurePendingReviewsForCompletedContract(saved);
+        feedbackAggregateService.recalculateCaretakerMetrics(saved.getCaretaker().getId());
+
         CaretakerProfile profile = caretakerProfileRepository
                 .findByUserIdWithUser(saved.getCaretaker().getId())
                 .orElse(null);
@@ -358,9 +371,9 @@ public class HiringTransactionalService {
         UserNotificationEvent notification = UserNotificationEvent.forContract(
                 "CONTRACT_ENDED_EARLY",
                 saved.getId(),
-                "Service Ended Early",
+                "Service Ended Early — Feedback Ready",
                 actor.getFullName() + " ended shift #" + saved.getId()
-                        + " early and moved it to settlement: " + reason,
+                        + " early (" + reason + "). Pending feedback forms are now ready.",
                 actor.getId(),
                 actor.getFullName()
         );
@@ -376,6 +389,105 @@ public class HiringTransactionalService {
         });
 
         return toSingleResponse(actorPrincipal, saved, profile, now);
+    }
+
+    /**
+     * Idempotent background worker transition promoting due SCHEDULED contracts to ACTIVE.
+     */
+    @Transactional
+    public boolean activateScheduledContract(Long contractId, Instant now) {
+        HireContract contract = hireContractRepository.findByIdWithUsers(contractId).orElse(null);
+        if (contract == null
+                || contract.getStatus() != ContractStatus.SCHEDULED
+                || now.isBefore(contract.getScheduledStartTime())
+                || !now.isBefore(contract.getScheduledEndTime())) {
+            return false;
+        }
+
+        contract.activateFromScheduled();
+        HireContract saved = hireContractRepository.saveAndFlush(contract);
+
+        Long customerId = saved.getCustomer().getId();
+        Long caretakerId = saved.getCaretaker().getId();
+        UserNotificationEvent customerAlert = UserNotificationEvent.forContract(
+                "CONTRACT_ACTIVATED",
+                saved.getId(),
+                "Hospital Care Shift Started",
+                "Your booking #" + saved.getId() + " with " + saved.getCaretaker().getFullName() + " is now active.",
+                caretakerId,
+                saved.getCaretaker().getFullName()
+        );
+        UserNotificationEvent caretakerAlert = UserNotificationEvent.forContract(
+                "CONTRACT_ACTIVATED",
+                saved.getId(),
+                "Shift Is Now Active",
+                "Your booking #" + saved.getId() + " for " + saved.getCustomer().getFullName() + " has started.",
+                customerId,
+                saved.getCustomer().getFullName()
+        );
+
+        TransactionCommitHooks.runAfterCommit(() -> {
+            realtimeEventDispatcher.publishUserNotification(customerId, customerAlert);
+            realtimeEventDispatcher.publishUserNotification(caretakerId, caretakerAlert);
+        });
+        return true;
+    }
+
+    /**
+     * Idempotent background worker transition completing expired ACTIVE/SCHEDULED shifts,
+     * generating dual pending feedback forms, refreshing caretaker availability, and notifying both parties.
+     */
+    @Transactional
+    public boolean autoCompleteExpiredContract(Long contractId, Instant now) {
+        HireContract contract = hireContractRepository.findByIdWithUsers(contractId).orElse(null);
+        if (contract == null
+                || !ContractStatus.BLOCKING_STATUSES.contains(contract.getStatus())
+                || now.isBefore(contract.getScheduledEndTime())) {
+            return false;
+        }
+
+        contract.autoComplete(contract.getScheduledEndTime());
+        HireContract saved = hireContractRepository.saveAndFlush(contract);
+
+        feedbackAggregateService.ensurePendingReviewsForCompletedContract(saved);
+        feedbackAggregateService.recalculateCaretakerMetrics(saved.getCaretaker().getId());
+
+        CaretakerProfile profile = caretakerProfileRepository
+                .findByUserIdWithUser(saved.getCaretaker().getId())
+                .orElse(null);
+        FeedAvailabilityEvent availabilityEvent = profile != null
+                ? FeedAvailabilityEvent.from(profile, countTodayBlockingBookings(profile.getUser().getId()))
+                : null;
+
+        Long customerId = saved.getCustomer().getId();
+        Long caretakerId = saved.getCaretaker().getId();
+        UserNotificationEvent customerAlert = UserNotificationEvent.forContract(
+                "CONTRACT_COMPLETED_FEEDBACK_READY",
+                saved.getId(),
+                "Shift Completed — Please Share Feedback",
+                "Shift #" + saved.getId() + " with " + saved.getCaretaker().getFullName()
+                        + " has ended. Your feedback form is ready whenever you have a moment.",
+                caretakerId,
+                saved.getCaretaker().getFullName()
+        );
+        UserNotificationEvent caretakerAlert = UserNotificationEvent.forContract(
+                "CONTRACT_COMPLETED_FEEDBACK_READY",
+                saved.getId(),
+                "Shift Completed — Feedback Ready",
+                "Shift #" + saved.getId() + " for " + saved.getCustomer().getFullName()
+                        + " is complete. You can now review the customer and track settlement.",
+                customerId,
+                saved.getCustomer().getFullName()
+        );
+
+        TransactionCommitHooks.runAfterCommit(() -> {
+            if (availabilityEvent != null) {
+                realtimeEventDispatcher.publishFeedAvailability(availabilityEvent);
+            }
+            realtimeEventDispatcher.publishUserNotification(customerId, customerAlert);
+            realtimeEventDispatcher.publishUserNotification(caretakerId, caretakerAlert);
+        });
+        return true;
     }
 
     @Transactional(readOnly = true)
@@ -550,6 +662,15 @@ public class HiringTransactionalService {
         for (Object[] row : hireContractRepository.countCompletedHiresByCustomerIds(customerIds, COMPLETED_HISTORY_STATUSES)) {
             completedByCustomerId.put((Long) row[0], ((Number) row[1]).intValue());
         }
+        Map<Long, FeedbackAggregateService.ReviewSummaryStats> customerStatsById =
+                feedbackAggregateService.summarizeCustomerReviewMetrics(customerIds);
+
+        List<Long> contractIds = contracts.stream().map(HireContract::getId).toList();
+        Map<Long, Review> viewerReviewsByContractId = requester.getRole() == Role.ADMIN
+                ? Collections.emptyMap()
+                : reviewRepository.findByContractIdInAndReviewerId(contractIds, requester.getUserId())
+                        .stream()
+                        .collect(Collectors.toMap(r -> r.getContract().getId(), Function.identity(), (a, b) -> a));
 
         Set<String> unlockedPairs = loadUnlockedPairsForRequester(requester, contracts);
         Instant now = Instant.now();
@@ -569,6 +690,8 @@ public class HiringTransactionalService {
                             unlocked,
                             roomId,
                             completedByCustomerId.getOrDefault(customerId, 0),
+                            customerStatsById.get(customerId),
+                            viewerReviewsByContractId.get(contract.getId()),
                             now
                     );
                 })
@@ -615,8 +738,27 @@ public class HiringTransactionalService {
         if (!rows.isEmpty()) {
             completedCount = ((Number) rows.getFirst()[1]).intValue();
         }
+        FeedbackAggregateService.ReviewSummaryStats customerStats = feedbackAggregateService
+                .summarizeCustomerReviewMetrics(List.of(customerId))
+                .get(customerId);
+        Review viewerReview = requester.getRole() == Role.ADMIN
+                ? null
+                : reviewRepository.findByContractIdInAndReviewerId(List.of(contract.getId()), requester.getUserId())
+                        .stream()
+                        .findFirst()
+                        .orElse(null);
 
-        return buildResponse(requester, contract, caretakerProfile, unlocked, roomId, completedCount, now);
+        return buildResponse(
+                requester,
+                contract,
+                caretakerProfile,
+                unlocked,
+                roomId,
+                completedCount,
+                customerStats,
+                viewerReview,
+                now
+        );
     }
 
     private HireContractResponse buildResponse(
@@ -626,6 +768,8 @@ public class HiringTransactionalService {
             boolean contactUnlocked,
             String negotiationRoomId,
             int customerCompletedHiresCount,
+            FeedbackAggregateService.ReviewSummaryStats customerStats,
+            Review viewerReview,
             Instant now
     ) {
         ContractStatus status = contract.getStatus();
@@ -648,6 +792,8 @@ public class HiringTransactionalService {
                 exposeCaretakerMobile,
                 exposeCustomerMobile,
                 customerCompletedHiresCount,
+                customerStats,
+                viewerReview,
                 now
         );
     }

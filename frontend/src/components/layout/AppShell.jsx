@@ -85,13 +85,19 @@ export function AppShell() {
         } else if (event.contractId) {
           if (user.role === 'CUSTOMER') {
             actionTo = '/customer/hires';
-            actionLabel = 'View Hires';
+            actionLabel =
+              event.eventType === 'CONTRACT_COMPLETED_FEEDBACK_READY'
+                ? 'Leave Feedback'
+                : 'View Hires';
           } else if (event.eventType === 'HIRE_REQUESTED') {
             actionTo = '/caretaker/requests';
             actionLabel = 'Review Request';
           } else {
             actionTo = '/caretaker/bookings';
-            actionLabel = 'View Bookings';
+            actionLabel =
+              event.eventType === 'CONTRACT_COMPLETED_FEEDBACK_READY'
+                ? 'Leave Feedback'
+                : 'View Bookings';
           }
         } else if (
           event.eventType === 'APPLICATION_APPROVED' ||

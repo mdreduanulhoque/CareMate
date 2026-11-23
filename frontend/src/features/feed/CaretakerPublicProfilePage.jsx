@@ -18,11 +18,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import * as contactAndChatApi from '../../api/contactAndChatApi';
 import * as feedAndProfileApi from '../../api/feedAndProfileApi';
+import * as reviewApi from '../../api/reviewApi';
 import { AlertBanner } from '../../components/ui/AlertBanner';
 import { Button } from '../../components/ui/Button';
 import { CaretakerAvatar } from '../../components/ui/CaretakerAvatar';
 import { useAuth } from '../../context/useAuth';
 import { useWebSocket } from '../../context/useWebSocket';
+import { ReviewItemCard } from '../feedback/ReviewItemCard';
 import { HireRequestModal } from '../hiring/HireRequestModal';
 
 function formatRate(rateAmount, rateType) {
@@ -39,6 +41,7 @@ export function CaretakerPublicProfilePage() {
   const isCustomer = user?.role === 'CUSTOMER';
 
   const [detail, setDetail] = useState(null);
+  const [reviewsSummary, setReviewsSummary] = useState(null);
   const [unlockedContact, setUnlockedContact] = useState(null);
   const [loading, setLoading] = useState(true);
   const [unlocking, setUnlocking] = useState(false);
@@ -52,8 +55,12 @@ export function CaretakerPublicProfilePage() {
     setLoading(true);
     setError('');
     try {
-      const data = await feedAndProfileApi.fetchCaretakerPublicDetail(caretakerUserId);
+      const [data, publicReviews] = await Promise.all([
+        feedAndProfileApi.fetchCaretakerPublicDetail(caretakerUserId),
+        reviewApi.fetchCaretakerPublicReviews(caretakerUserId).catch(() => null),
+      ]);
       setDetail(data);
+      setReviewsSummary(publicReviews);
 
       if (isCustomer && data.contactUnlocked) {
         try {
@@ -212,10 +219,16 @@ export function CaretakerPublicProfilePage() {
                 <div className="flex items-center justify-center gap-1 text-base font-bold text-amber-950">
                   <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
                   <span>
-                    {detail.completedHiresCount > 0 ? Number(detail.avgRating).toFixed(1) : 'New'}
+                    {(reviewsSummary?.totalReviews || 0) > 0 || Number(detail.avgRating) > 0
+                      ? Number(detail.avgRating).toFixed(1)
+                      : 'New'}
                   </span>
                 </div>
-                <div className="text-[11px] font-medium text-amber-900">Star Rating</div>
+                <div className="text-[11px] font-medium text-amber-900">
+                  {(reviewsSummary?.totalReviews || 0) > 0
+                    ? `${reviewsSummary.totalReviews} Review${reviewsSummary.totalReviews > 1 ? 's' : ''}`
+                    : 'Star Rating'}
+                </div>
               </div>
 
               <div className="rounded-xl bg-slate-50 p-3">
@@ -229,7 +242,7 @@ export function CaretakerPublicProfilePage() {
                 <div className="flex items-center justify-center gap-1 text-base font-bold text-teal-950">
                   <ThumbsUp className="h-3.5 w-3.5" />
                   <span>
-                    {detail.completedHiresCount > 0
+                    {(reviewsSummary?.totalReviews || 0) > 0
                       ? `${Math.round(Number(detail.hireAgainPercentage))}%`
                       : '—'}
                   </span>
@@ -279,6 +292,35 @@ export function CaretakerPublicProfilePage() {
                 </div>
               ))}
             </div>
+          </section>
+
+          <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Star className="h-4 w-4 fill-amber-400 text-amber-400" aria-hidden="true" />
+                <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">
+                  Verified Family Reviews ({reviewsSummary?.totalReviews ?? 0})
+                </h2>
+              </div>
+              {reviewsSummary?.totalReviews > 0 && (
+                <span className="text-xs font-bold text-teal-800">
+                  {Math.round(Number(reviewsSummary.wouldEngageAgainPercentage))}% Would Hire Again
+                </span>
+              )}
+            </div>
+
+            {!reviewsSummary || reviewsSummary.reviews.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 p-4 text-center text-xs text-slate-500">
+                No family reviews yet. Verified reviews appear here after completed on-platform
+                shifts.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {reviewsSummary.reviews.map((review) => (
+                  <ReviewItemCard key={review.id} review={review} />
+                ))}
+              </div>
+            )}
           </section>
 
           {isCustomer && (

@@ -9,6 +9,7 @@ import com.carebridge.common.NotFoundException;
 import com.carebridge.security.CareBridgeUserPrincipal;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
@@ -95,6 +96,28 @@ public class BookingConcurrencyCoordinator {
         return executeWithCaretakerLock(
                 caretakerUserId,
                 () -> hiringTransactionalService.endContractEarly(actorPrincipal, contractId, request)
+        );
+    }
+
+    public boolean activateScheduledContract(Long contractId, Instant now) {
+        Long caretakerUserId = hireContractRepository.findCaretakerIdByContractId(contractId).orElse(null);
+        if (caretakerUserId == null) {
+            return false;
+        }
+        return executeWithCaretakerLock(
+                caretakerUserId,
+                () -> hiringTransactionalService.activateScheduledContract(contractId, now)
+        );
+    }
+
+    public boolean autoCompleteExpiredContract(Long contractId, Instant now) {
+        Long caretakerUserId = hireContractRepository.findCaretakerIdByContractId(contractId).orElse(null);
+        if (caretakerUserId == null) {
+            return false;
+        }
+        return executeWithCaretakerLock(
+                caretakerUserId,
+                () -> hiringTransactionalService.autoCompleteExpiredContract(contractId, now)
         );
     }
 

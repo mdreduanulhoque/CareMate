@@ -48,15 +48,22 @@ Use this file together with [CareMate.md](./CareMate.md), [AGENTS.md](./AGENTS.m
 - Complete REST API (`HireContractController` at `/api/hires`): Customer-only `POST /api/hires`, role/IDOR-scoped `GET /api/hires` & `/{id}`, privacy-safe `GET /api/hires/caretaker/{id}/schedule` (zero PII), Caretaker `accept`/`decline`, and participant/Admin `cancel` (pre-start, frees slot) & `end-early` (active shift -> `COMPLETED_PENDING_SETTLEMENT`, records `actualEndTime`, frees remaining schedule).
 - Live WebSocket pushes on `/user/{id}/queue/notifications` for every contract transition (`HIRE_REQUESTED`, `HIRE_ACCEPTED`, `HIRE_DECLINED`, `CONTRACT_CANCELLED`, `CONTRACT_ENDED_EARLY`) and live `todayBookingsCount`/`dailyCapReachedToday` updates on `/topic/feed/availability`.
 - Mobile-first Hiring UI: `HireRequestModal` (Dhaka time inputs + live daily schedule slots), `ContractReasonModal`, `ContractCard` (with Relative Trust Preview for Caretakers), `CustomerHiresPage` (`/customer/hires`), upgraded `CaretakerRequestsGatePage` (`/caretaker/requests`), `CaretakerBookingsPage` (`/caretaker/bookings`), Hire CTAs on Profile & Negotiation Chat, and live `2/2 Booked Today` badges on Hunters Feed.
-- **Current Verified Baseline:** `80/80` backend tests passing (including 3 `CountDownLatch` multithreaded concurrency stress tests), frontend `npm run lint` (0 warnings) + chunked `npm run build` clean, live XAMPP MariaDB verified at Flyway `V4` (`ddl-auto=validate`).
+
+### Phase 6 — Automated Background Workers & Bidirectional 7-Day Editable Feedback System (Done)
+- Flyway `V5__create_reviews_table.sql` (`reviews` table with `UNIQUE(contract_id, reviewer_id)`, `is_submitted`, `is_edited`, `is_locked`, `editable_until`, and lock-maintenance/profile-review indexes).
+- Managed `ScheduledExecutorService` (`carebridge-sched-`) + bounded `contractLifecycleExecutor` (`ThreadPoolTaskExecutor`, `contract-worker-`) in `AsyncConfig` powering:
+  - `ContractLifecycleScheduler` (auto-promoting due `SCHEDULED -> ACTIVE` and auto-completing expired shifts to `COMPLETED_PENDING_SETTLEMENT` via per-caretaker `BookingConcurrencyCoordinator`, idempotently creating dual pending `reviews`, recalculating caretaker metrics, broadcasting live feed availability, and pushing WebSocket alerts).
+  - `ReviewLockMaintenanceScheduler` (permanently locking submitted reviews older than 7 days and triggering async caretaker metric recalculation on `contractLifecycleExecutor`).
+- Immediate dual pending review generation on **End Service Early** as well, with microsecond timestamp alignment (`ChronoUnit.MICROS`) matching SQL `TIMESTAMP(6)`.
+- Bidirectional Feedback API (`FeedbackController` at `/api/reviews`: `/pending`, `/authored`, `/contract/{id}`, `POST /{id}/submit`, `PUT /{id}` 7-day edit with `edited=true` and immutable `editableUntil`, `/caretaker/{id}`, `/customer/{id}`, `/admin`), plus live customer trust ratings (`customerAvgRating`, `customerWorkAgainPercentage`, `customerReviewCount`) and viewer feedback flags wired into `HireContractResponse`.
+- Mobile-first Feedback UI: `ReviewFormModal` (1–5 star picker, role-specific Yes/No repeat-engagement prompt, 7-day window notice), `ReviewItemCard` (with `"Edited"` badge + updated timestamp & lock indicator), `PendingReviewsBanner`, `CustomerReviewsModal` on Caretaker incoming requests, and Verified Family Reviews on `CaretakerPublicProfilePage`.
+- **Current Verified Baseline:** `85/85` backend tests passing, frontend `npm run lint` (0 errors, 0 warnings) + chunked `npm run build` clean, live XAMPP MariaDB verified at Flyway `V5` (`ddl-auto=validate`).
 
 ---
 
 ## Remaining Phases (Awaiting Explicit Permission Per Phase)
 
-- **NEXT -> Phase 6: Automated Background Workers & Bidirectional 7-Day Editable Feedback System**
-  - Flyway `V5` (`reviews`), `ScheduledExecutorService` + `ThreadPoolTaskExecutor` auto-activation/auto-completion & dual pending review generation, 7-day editable window with `"Edited"` badge, scheduled lock & async aggregate recalculation.
-- **Phase 7: Dual Payment Confirmation & Real-Time 3-Way Admin Dispute Mediation**
+- **NEXT -> Phase 7: Dual Payment Confirmation & Real-Time 3-Way Admin Dispute Mediation**
   - Flyway `V6` (`payment_disputes`), Customer Payment Done, Caretaker Confirm (`CLOSED_PAID`) / Refuse (`PAYMENT_DISPUTED`), 3-Way WebSocket Dispute Room (`/topic/chat/dispute/{contractId}`), Admin resolution (`DISPUTE_RESOLVED`) & Admin Users tab.
 - **Phase 8: End-to-End Flow Verification, Security Hardening & Mobile UX Polish**
   - Full Section 2.4 RBAC matrix audit, end-to-end verification of Flows 5.1–5.3 on mobile (`390x844`) & desktop, security sweep, and root `README.md`.

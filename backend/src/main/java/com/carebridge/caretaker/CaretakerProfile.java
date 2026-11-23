@@ -174,6 +174,16 @@ public class CaretakerProfile {
         return hireAgainPercentage;
     }
 
+    public void updateReviewMetrics(
+            BigDecimal avgRating,
+            int completedHiresCount,
+            BigDecimal hireAgainPercentage
+    ) {
+        this.avgRating = avgRating != null ? avgRating : BigDecimal.ZERO;
+        this.completedHiresCount = Math.max(0, completedHiresCount);
+        this.hireAgainPercentage = hireAgainPercentage != null ? hireAgainPercentage : BigDecimal.ZERO;
+    }
+
     public Long getVersion() {
         return version;
     }

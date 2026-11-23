@@ -2,7 +2,9 @@ import {
   CalendarClock,
   Check,
   Clock,
+  Edit3,
   FileText,
+  Lock,
   MapPin,
   MessageSquare,
   Phone,
@@ -38,6 +40,8 @@ export function ContractCard({
   onDecline,
   onCancel,
   onEndEarly,
+  onOpenFeedback,
+  onViewCustomerReviews,
 }) {
   const isCustomer = viewerRole === 'CUSTOMER';
   const isCaretaker = viewerRole === 'CARETAKER';
@@ -100,10 +104,21 @@ export function ContractCard({
 
       {/* Customer Trust Preview shown to Caretakers evaluating incoming hire requests (Section 5.2 step 7) */}
       {isCaretaker && contract.status === 'REQUESTED' && (
-        <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-3 text-xs space-y-1.5">
-          <div className="flex items-center gap-1.5 font-bold text-sky-950">
-            <ShieldCheck className="h-4 w-4 text-sky-700" aria-hidden="true" />
-            <span>Relative Trust Preview</span>
+        <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-3 text-xs space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 font-bold text-sky-950">
+              <ShieldCheck className="h-4 w-4 text-sky-700" aria-hidden="true" />
+              <span>Relative Trust Preview</span>
+            </div>
+            {onViewCustomerReviews && (
+              <button
+                type="button"
+                onClick={() => onViewCustomerReviews(contract)}
+                className="inline-flex min-h-[36px] items-center rounded-lg border border-sky-300 bg-white px-2.5 text-[11px] font-bold text-sky-900 hover:bg-sky-100"
+              >
+                Read Caretaker Reviews ({contract.customerReviewCount})
+              </button>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-2 text-sky-900">
             <span className="inline-flex items-center gap-1 rounded-lg bg-white px-2 py-1 font-semibold border border-sky-100">
@@ -178,13 +193,41 @@ export function ContractCard({
 
       {contract.status === 'COMPLETED_PENDING_SETTLEMENT' && (
         <div className="rounded-xl border border-indigo-200 bg-indigo-50/70 px-3.5 py-2.5 text-xs text-indigo-950">
-          <strong>Settlement Stage:</strong> Shift ended and schedule freed. Bidirectional 7-day
-          reviews and dual payment confirmation / dispute mediation activate in Phases 6–7.
+          <strong>Settlement Stage:</strong> Shift completed and bidirectional feedback is ready.
+          Dual payment confirmation &amp; 3-way Admin dispute mediation activate in Phase 7.
         </div>
       )}
 
       {/* Action buttons (minimum 44px touch targets) */}
       <div className="flex flex-wrap items-center gap-2 pt-0.5">
+        {contract.myReviewId && !contract.myReviewSubmitted && onOpenFeedback && (
+          <Button
+            variant="primary"
+            onClick={() => onOpenFeedback(contract)}
+            className="flex-1 bg-amber-600 hover:bg-amber-700"
+          >
+            <Star className="h-4 w-4 fill-white" aria-hidden="true" />
+            <span>Leave Feedback</span>
+          </Button>
+        )}
+
+        {contract.myReviewId && contract.myReviewSubmitted && contract.myReviewCanEdit && onOpenFeedback && (
+          <Button
+            variant="outline"
+            onClick={() => onOpenFeedback(contract)}
+            className="flex-1 border-teal-300 text-teal-800 hover:bg-teal-50"
+          >
+            <Edit3 className="h-4 w-4" aria-hidden="true" />
+            <span>Edit Feedback (7-Day Window)</span>
+          </Button>
+        )}
+
+        {contract.myReviewId && contract.myReviewSubmitted && contract.myReviewLocked && (
+          <span className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-600">
+            <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>Review Locked</span>
+          </span>
+        )}
         {isCaretaker && contract.status === 'REQUESTED' && (
           <div className="grid w-full grid-cols-2 gap-2.5">
             <Button

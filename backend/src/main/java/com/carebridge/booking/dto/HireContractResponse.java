@@ -4,6 +4,8 @@ import com.carebridge.booking.ContractRateType;
 import com.carebridge.booking.ContractStatus;
 import com.carebridge.booking.HireContract;
 import com.carebridge.caretaker.CaretakerProfile;
+import com.carebridge.feedback.FeedbackAggregateService;
+import com.carebridge.feedback.Review;
 import com.carebridge.user.Role;
 import com.carebridge.user.User;
 
@@ -45,6 +47,11 @@ public record HireContractResponse(
         boolean contactUnlocked,
         boolean canCancel,
         boolean canEndEarly,
+        Long myReviewId,
+        boolean myReviewSubmitted,
+        boolean myReviewCanEdit,
+        boolean myReviewLocked,
+        Instant myReviewEditableUntil,
         Instant createdAt,
         Instant updatedAt
 ) {
@@ -56,6 +63,8 @@ public record HireContractResponse(
             boolean exposeCaretakerMobile,
             boolean exposeCustomerMobile,
             int customerCompletedHiresCount,
+            FeedbackAggregateService.ReviewSummaryStats customerReviewStats,
+            Review viewerReview,
             Instant now
     ) {
         User customer = contract.getCustomer();
@@ -69,6 +78,15 @@ public record HireContractResponse(
         boolean canEndEarly = status == ContractStatus.ACTIVE
                 || (status == ContractStatus.SCHEDULED && hasStarted);
 
+        FeedbackAggregateService.ReviewSummaryStats stats =
+                customerReviewStats != null ? customerReviewStats : FeedbackAggregateService.ReviewSummaryStats.EMPTY;
+
+        Long myReviewId = viewerReview != null ? viewerReview.getId() : null;
+        boolean myReviewSubmitted = viewerReview != null && viewerReview.isSubmitted();
+        boolean myReviewCanEdit = viewerReview != null && viewerReview.isCurrentlyEditable(now);
+        boolean myReviewLocked = viewerReview != null && viewerReview.isEffectivelyLocked(now);
+        Instant myReviewEditableUntil = viewerReview != null ? viewerReview.getEditableUntil() : null;
+
         return new HireContractResponse(
                 contract.getId(),
                 customer.getId(),
@@ -77,9 +95,9 @@ public record HireContractResponse(
                 exposeCustomerMobile ? customer.getMobileNumber() : null,
                 customer.getCreatedAt(),
                 customerCompletedHiresCount,
-                BigDecimal.ZERO,
-                BigDecimal.ZERO,
-                0,
+                stats.avgRating(),
+                stats.wouldEngageAgainPercentage(),
+                stats.totalReviews(),
                 caretaker.getId(),
                 caretaker.getFullName(),
                 exposeCaretakerMobile ? caretaker.getMobileNumber() : null,
@@ -104,6 +122,11 @@ public record HireContractResponse(
                 contactUnlocked,
                 canCancel,
                 canEndEarly,
+                myReviewId,
+                myReviewSubmitted,
+                myReviewCanEdit,
+                myReviewLocked,
+                myReviewEditableUntil,
                 contract.getCreatedAt(),
                 contract.getUpdatedAt()
         );

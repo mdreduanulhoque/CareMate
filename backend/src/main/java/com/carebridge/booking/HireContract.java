@@ -143,6 +143,17 @@ public class HireContract {
         this.actualEndTime = stoppedAt;
     }
 
+    public void activateFromScheduled() {
+        this.status = ContractStatus.ACTIVE;
+    }
+
+    public void autoComplete(Instant completedAt) {
+        this.status = ContractStatus.COMPLETED_PENDING_SETTLEMENT;
+        if (this.actualEndTime == null) {
+            this.actualEndTime = completedAt;
+        }
+    }
+
     public Long getId() {
         return id;
     }

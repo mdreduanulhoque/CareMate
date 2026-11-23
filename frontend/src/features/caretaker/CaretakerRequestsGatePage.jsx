@@ -6,6 +6,7 @@ import { AlertBanner } from '../../components/ui/AlertBanner';
 import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../context/useAuth';
 import { useWebSocket } from '../../context/useWebSocket';
+import { CustomerReviewsModal } from '../feedback/CustomerReviewsModal';
 import { ContractCard } from '../hiring/ContractCard';
 import { ContractReasonModal } from '../hiring/ContractReasonModal';
 import { CaretakerVerificationPanel } from './CaretakerVerificationPanel';
@@ -32,6 +33,7 @@ export function CaretakerRequestsGatePage() {
 
   const [declineTarget, setDeclineTarget] = useState(null);
   const [declineError, setDeclineError] = useState('');
+  const [reviewsTargetCustomer, setReviewsTargetCustomer] = useState(null);
 
   const loadIncomingRequests = useCallback(
     async ({ silent = false } = {}) => {
@@ -207,6 +209,12 @@ export function CaretakerRequestsGatePage() {
                 setDeclineError('');
                 setDeclineTarget(target);
               }}
+              onViewCustomerReviews={(target) =>
+                setReviewsTargetCustomer({
+                  id: target.customerId,
+                  name: target.customerFullName,
+                })
+              }
             />
           ))}
         </div>
@@ -220,6 +228,14 @@ export function CaretakerRequestsGatePage() {
           error={declineError}
           onClose={() => setDeclineTarget(null)}
           onConfirm={handleConfirmDecline}
+        />
+      )}
+
+      {reviewsTargetCustomer && (
+        <CustomerReviewsModal
+          customerUserId={reviewsTargetCustomer.id}
+          customerName={reviewsTargetCustomer.name}
+          onClose={() => setReviewsTargetCustomer(null)}
         />
       )}
     </div>

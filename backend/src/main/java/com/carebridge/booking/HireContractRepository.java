@@ -123,4 +123,24 @@ public interface HireContractRepository extends JpaRepository<HireContract, Long
             @Param("customerIds") Collection<Long> customerIds,
             @Param("completedStatuses") Collection<ContractStatus> completedStatuses
     );
+
+    @Query("""
+            SELECT hc.id FROM HireContract hc
+            WHERE hc.status = com.carebridge.booking.ContractStatus.SCHEDULED
+              AND hc.scheduledStartTime <= :now
+              AND hc.scheduledEndTime > :now
+            """)
+    List<Long> findScheduledIdsReadyToActivate(@Param("now") Instant now);
+
+    @Query("""
+            SELECT hc.id FROM HireContract hc
+            WHERE hc.status IN :activeOrScheduled
+              AND hc.scheduledEndTime <= :now
+            """)
+    List<Long> findContractIdsDueForAutoCompletion(
+            @Param("activeOrScheduled") Collection<ContractStatus> activeOrScheduled,
+            @Param("now") Instant now
+    );
+
+    long countByCaretakerIdAndStatusIn(Long caretakerId, Collection<ContractStatus> statuses);
 }
