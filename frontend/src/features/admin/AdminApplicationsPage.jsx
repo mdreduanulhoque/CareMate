@@ -167,7 +167,7 @@ export function AdminApplicationsPage() {
         </Button>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
         {FILTERS.map((item) => (
           <button
             key={item.key}

@@ -64,11 +64,20 @@ Use this file together with [CareMate.md](./CareMate.md), [AGENTS.md](./AGENTS.m
 - Real-Time **3-Way WebSocket Dispute Mediation Room**: enabled strict 3-way authorization in `ChatRoomAuthorizationService` & `StompAuthChannelInterceptor` for `/topic/chat/dispute/{contractId}` and `/app/chat/dispute/{contractId}` (exclusively contract Customer, contract Caretaker, or `ROLE_ADMIN`, locking sends read-only once `DISPUTE_RESOLVED`), backed by persisted `chat_messages` (`room_type = DISPUTE`, `contract_id`).
 - Admin Users Management API (`AdminUserController` at `/api/admin/users`: role/keyword search without password leakage, non-admin activate/deactivate moderation, and approved caretaker availability moderation with live `/topic/feed/availability` broadcast).
 - Mobile-first UI: `PaymentActionModal`, upgraded `ContractCard` dual payment controls, `DisputeMediationRoomPage` (collapsible pinned payment/contract context + role-distinguished messages for Relative, Caretaker, and Admin Mediator + inline Admin resolve), `AdminDisputesPage`, and `AdminUsersPage` — zero placeholder tabs remain across all 3 roles.
-- **Current Verified Baseline:** `87/87` backend tests passing (including live 3-way STOMP dispute tests), frontend `npm run lint` (0 errors, 0 warnings) + chunked `npm run build` clean, live XAMPP MariaDB verified at Flyway `V6` (`ddl-auto=validate`).
+### Phase 8 — End-to-End Flow Verification, Security Hardening, Mobile UX Polish & Documentation (Done)
+- **Dead-Code & Security Audit:** Removed unused `RoleWorkspacePage.jsx` (and empty `features/dashboard/` directory), audited all 14 backend controllers for strict Java record DTO boundaries and `@PreAuthorize` coverage, verified hardened HTTP security headers (`X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`), and confirmed zero `dangerouslySetInnerHTML`, `console.log`, `System.out.print`, empty catch blocks, or committed secrets.
+- **Automated Section 2.4 RBAC Matrix Integration Suite:** Added `RbacMatrixAuditIntegrationTest` systematically verifying unauthenticated `401`, tampered JWT `401`, HTTP security response headers, Hunters Feed phone privacy, IDOR isolation, and every row of Section 2.4 across Customer, Unverified Caretaker, Approved Caretaker, and Admin.
+- **Live Browser End-to-End Verification & Mobile UX Polish:** Verified Flows 5.1–5.3 live against Spring Boot (`localhost:8080` + live XAMPP MariaDB `V6`) and Vite (`localhost:5173`) on both **mobile (`390×844`)** and **desktop (`1280×800`)** viewports with zero console errors, zero failed requests, and zero horizontal overflow. Fixed all polish findings surfaced during live inspection:
+  - Removed redundant `<span>` inside `Button.jsx` (`[&_svg]:shrink-0`) so icons always render cleanly inline beside button labels on narrow viewports.
+  - Exported `getButtonClasses(...)` and eliminated all 5 invalid nested `<Link><Button>` pairs across Admin, Caretaker, Chat, and Hiring views.
+  - Added `.no-scrollbar` to `index.css` and applied it across all 7 horizontal mobile filter pill rows.
+  - Upgraded all remaining secondary interactive controls (`Show/Hide` password toggles, `Re-check`, `Change Photo`, `Read Caretaker Reviews`, `Refresh`, `Update Statement`, `Edit`, toast/modal close icons) to `>= 44px` touch targets and resolved password-toggle accessible label collision.
+  - Improved `NegotiationChatRoomPage` mobile header layout and composer placeholder so caretaker names and actions display cleanly without clipping at `390px`.
+- **Final Documentation:** Authored root [README.md](./README.md) documenting architecture, Flyway `V1`–`V6` schema, multithreading/concurrency pools, STOMP WebSocket topology/security, local setup (Java 21 + XAMPP MariaDB + Vite), test commands, and Section 7 MVP scope boundaries.
+- **Final Verified Baseline:** `89/89` backend tests passing, frontend `npm run lint` (0 errors, 0 warnings) + chunked `npm run build` clean, live XAMPP MariaDB verified at Flyway `V6` (`ddl-auto=validate`).
 
 ---
 
-## Remaining Phases (Awaiting Explicit Permission Per Phase)
+## Project Status
 
-- **NEXT -> Phase 8: End-to-End Flow Verification, Security Hardening & Mobile UX Polish**
-  - Full Section 2.4 RBAC matrix audit, end-to-end verification of Flows 5.1–5.3 on mobile (`390x844`) & desktop, security sweep, and root `README.md`.
+- **All Phases (Phase 0 through Phase 8) Complete and Verified.** Ready for final commit and push.

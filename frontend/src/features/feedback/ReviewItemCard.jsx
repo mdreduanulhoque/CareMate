@@ -76,7 +76,7 @@ export function ReviewItemCard({ review, onEdit }) {
               <button
                 type="button"
                 onClick={() => onEdit(review)}
-                className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-teal-200 bg-white px-3 text-xs font-bold text-teal-800 hover:bg-teal-50"
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-teal-200 bg-white px-3.5 text-xs font-bold text-teal-800 hover:bg-teal-50"
               >
                 <Edit3 className="h-3.5 w-3.5" aria-hidden="true" />
                 <span>Edit Review</span>

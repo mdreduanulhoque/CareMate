@@ -151,7 +151,7 @@ export function HuntersFeedPage() {
           </Button>
         </form>
 
-        <div className="mt-2.5 flex items-center gap-2 overflow-x-auto pb-0.5">
+        <div className="no-scrollbar mt-2.5 flex items-center gap-2 overflow-x-auto pb-0.5">
           <button
             type="button"
             onClick={() => applyFilterPatch({ availableOnly: !filters.availableOnly })}

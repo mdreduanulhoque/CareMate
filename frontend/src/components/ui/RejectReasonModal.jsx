@@ -43,7 +43,7 @@ export function RejectReasonModal({ title, subtitle, submitting, error, onClose,
             type="button"
             onClick={onClose}
             aria-label="Close modal"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100"
           >
             <X className="h-5 w-5" />
           </button>

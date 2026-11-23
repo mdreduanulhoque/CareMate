@@ -6,6 +6,7 @@ import * as paymentDisputeApi from '../../api/paymentDisputeApi';
 import * as reviewApi from '../../api/reviewApi';
 import { AlertBanner } from '../../components/ui/AlertBanner';
 import { Button } from '../../components/ui/Button';
+import { getButtonClasses } from '../../components/ui/buttonStyles';
 import { useAuth } from '../../context/useAuth';
 import { useWebSocket } from '../../context/useWebSocket';
 import { getTodayDhakaDateString } from '../../utils/dhakaTime';
@@ -185,8 +186,8 @@ export function CaretakerBookingsPage() {
               </p>
             </div>
           </div>
-          <Link to="/caretaker/requests" className="block">
-            <Button fullWidth>Go to Verification Status</Button>
+          <Link to="/caretaker/requests" className={getButtonClasses({ fullWidth: true })}>
+            Go to Verification Status
           </Link>
         </div>
       </div>
@@ -229,7 +230,7 @@ export function CaretakerBookingsPage() {
         </Button>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
         {BOOKING_TABS.map((tab) => (
           <button
             key={tab.key}

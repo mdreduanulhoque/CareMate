@@ -248,7 +248,7 @@ export function AppShell() {
                 <Link
                   to={liveToast.actionTo}
                   onClick={() => setLiveToast(null)}
-                  className="inline-flex min-h-[36px] items-center rounded-lg bg-teal-700 px-3 text-xs font-bold text-white hover:bg-teal-800"
+                  className="inline-flex min-h-[44px] items-center rounded-lg bg-teal-700 px-3 text-xs font-bold text-white hover:bg-teal-800"
                 >
                   {liveToast.actionLabel}
                 </Link>
@@ -257,7 +257,7 @@ export function AppShell() {
                 type="button"
                 onClick={() => setLiveToast(null)}
                 aria-label="Dismiss notification"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-teal-800 hover:bg-teal-100"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-teal-800 hover:bg-teal-100"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>

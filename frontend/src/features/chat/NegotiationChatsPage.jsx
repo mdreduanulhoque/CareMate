@@ -13,6 +13,7 @@ import { Link } from 'react-router-dom';
 import * as contactAndChatApi from '../../api/contactAndChatApi';
 import { AlertBanner } from '../../components/ui/AlertBanner';
 import { Button } from '../../components/ui/Button';
+import { getButtonClasses } from '../../components/ui/buttonStyles';
 import { CaretakerAvatar } from '../../components/ui/CaretakerAvatar';
 import { useAuth } from '../../context/useAuth';
 import { useWebSocket } from '../../context/useWebSocket';
@@ -114,8 +115,8 @@ export function NegotiationChatsPage() {
               </p>
             </div>
           </div>
-          <Link to="/caretaker/requests" className="block">
-            <Button fullWidth>Go to Verification Status</Button>
+          <Link to="/caretaker/requests" className={getButtonClasses({ fullWidth: true })}>
+            Go to Verification Status
           </Link>
         </div>
       </div>
@@ -189,11 +190,9 @@ export function NegotiationChatsPage() {
           </p>
           {isCustomer && (
             <div className="pt-1">
-              <Link to="/customer/feed" className="inline-block">
-                <Button>
-                  <Search className="h-4 w-4" aria-hidden="true" />
-                  <span>Browse Hunters Feed</span>
-                </Button>
+              <Link to="/customer/feed" className={getButtonClasses()}>
+                <Search className="h-4 w-4" aria-hidden="true" />
+                <span>Browse Hunters Feed</span>
               </Link>
             </div>
           )}

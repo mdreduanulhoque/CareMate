@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import * as paymentDisputeApi from '../../api/paymentDisputeApi';
 import { AlertBanner } from '../../components/ui/AlertBanner';
 import { Button } from '../../components/ui/Button';
+import { getButtonClasses } from '../../components/ui/buttonStyles';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useWebSocket } from '../../context/useWebSocket';
 import { formatDhakaDateTime } from '../../utils/dhakaTime';
@@ -77,7 +78,7 @@ export function AdminDisputesPage() {
         </Button>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
         {FILTERS.map((item) => (
           <button
             key={item.key}
@@ -160,15 +161,19 @@ export function AdminDisputesPage() {
                 </div>
               )}
 
-              <Link to={`/admin/disputes/${dispute.contractId}`} className="block">
-                <Button fullWidth variant={dispute.status === 'RESOLVED' ? 'outline' : 'primary'}>
-                  <MessageSquare className="h-4 w-4" aria-hidden="true" />
-                  <span>
-                    {dispute.status === 'RESOLVED'
-                      ? 'View Mediation Audit Trail'
-                      : 'Open 3-Way Mediation Room'}
-                  </span>
-                </Button>
+              <Link
+                to={`/admin/disputes/${dispute.contractId}`}
+                className={getButtonClasses({
+                  fullWidth: true,
+                  variant: dispute.status === 'RESOLVED' ? 'outline' : 'primary',
+                })}
+              >
+                <MessageSquare className="h-4 w-4" aria-hidden="true" />
+                <span>
+                  {dispute.status === 'RESOLVED'
+                    ? 'View Mediation Audit Trail'
+                    : 'Open 3-Way Mediation Room'}
+                </span>
               </Link>
             </article>
           ))}

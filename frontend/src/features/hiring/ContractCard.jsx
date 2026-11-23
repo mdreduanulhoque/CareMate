@@ -128,7 +128,7 @@ export function ContractCard({
               <button
                 type="button"
                 onClick={() => onViewCustomerReviews(contract)}
-                className="inline-flex min-h-[36px] items-center rounded-lg border border-sky-300 bg-white px-2.5 text-[11px] font-bold text-sky-900 hover:bg-sky-100"
+                className="inline-flex min-h-[44px] items-center rounded-lg border border-sky-300 bg-white px-3 text-xs font-bold text-sky-900 hover:bg-sky-100"
               >
                 Read Caretaker Reviews ({contract.customerReviewCount})
               </button>

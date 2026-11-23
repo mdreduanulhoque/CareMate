@@ -178,7 +178,7 @@ export function CaretakerProfileEditor() {
                 type="button"
                 disabled={uploading}
                 onClick={() => fileInputRef.current?.click()}
-                className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
               >
                 {uploading ? (
                   <Upload className="h-3.5 w-3.5 animate-pulse" />

@@ -6,6 +6,7 @@ import * as paymentDisputeApi from '../../api/paymentDisputeApi';
 import * as reviewApi from '../../api/reviewApi';
 import { AlertBanner } from '../../components/ui/AlertBanner';
 import { Button } from '../../components/ui/Button';
+import { getButtonClasses } from '../../components/ui/buttonStyles';
 import { useWebSocket } from '../../context/useWebSocket';
 import { PaymentActionModal } from '../disputes/PaymentActionModal';
 import { PendingReviewsBanner } from '../feedback/PendingReviewsBanner';
@@ -171,7 +172,7 @@ export function CustomerHiresPage() {
         </Button>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
         {FILTER_TABS.map((tab) => (
           <button
             key={tab.key}
@@ -224,11 +225,9 @@ export function CustomerHiresPage() {
             chat, and submit a formal Hire request when ready.
           </p>
           <div className="pt-1">
-            <Link to="/customer/feed" className="inline-block">
-              <Button>
-                <Search className="h-4 w-4" aria-hidden="true" />
-                <span>Find a Verified Caretaker</span>
-              </Button>
+            <Link to="/customer/feed" className={getButtonClasses()}>
+              <Search className="h-4 w-4" aria-hidden="true" />
+              <span>Find a Verified Caretaker</span>
             </Link>
           </div>
         </div>

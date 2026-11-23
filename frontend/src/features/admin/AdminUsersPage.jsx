@@ -153,7 +153,7 @@ export function AdminUsersPage() {
         <Button type="submit">Search</Button>
       </form>
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
         {ROLE_FILTERS.map((item) => (
           <button
             key={item.key}

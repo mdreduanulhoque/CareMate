@@ -244,8 +244,8 @@ export function NegotiationChatRoomPage() {
   return (
     <div className="mx-auto flex h-[calc(100dvh-10.5rem)] max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs md:h-[calc(100dvh-7.5rem)]">
       {/* Room header */}
-      <header className="flex items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 py-2.5 sm:px-4">
-        <div className="flex min-w-0 items-center gap-2.5">
+      <header className="flex flex-col gap-2 border-b border-slate-200 bg-white px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           <Link
             to={inboxPath}
             aria-label="Back to chats"
@@ -263,12 +263,12 @@ export function NegotiationChatRoomPage() {
               available={Boolean(room.counterpartAvailable)}
             />
           ) : (
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-teal-700 text-sm font-bold text-white">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-teal-700 text-sm font-bold text-white sm:h-11 sm:w-11">
               {room.counterpartName?.slice(0, 1)?.toUpperCase() || <User className="h-5 w-5" />}
             </div>
           )}
 
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <h1 className="truncate text-sm font-bold text-slate-900 sm:text-base">
                 {room.counterpartName}
@@ -324,14 +324,14 @@ export function NegotiationChatRoomPage() {
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto sm:gap-1.5">
           {isCustomer && (
             <button
               type="button"
               onClick={() => setShowHireModal(true)}
-              className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-xl bg-teal-700 px-3.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-teal-800"
+              className="inline-flex min-h-[44px] flex-1 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-teal-700 px-3.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-teal-800 sm:flex-initial"
             >
-              <BriefcaseMedical className="h-4 w-4" aria-hidden="true" />
+              <BriefcaseMedical className="h-4 w-4 shrink-0" aria-hidden="true" />
               <span>Hire</span>
             </button>
           )}
@@ -339,15 +339,15 @@ export function NegotiationChatRoomPage() {
             <a
               href={`tel:${room.counterpartMobileNumber}`}
               aria-label={`Call ${room.counterpartName}`}
-              className={`inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-xl px-3 text-xs font-bold transition-colors ${
+              className={`inline-flex min-h-[44px] min-w-[44px] flex-1 shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 text-xs font-bold transition-colors sm:flex-initial ${
                 isCustomer
                   ? 'border border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100'
                   : 'bg-teal-700 text-white shadow-xs hover:bg-teal-800'
               }`}
             >
-              <Phone className="h-4 w-4" aria-hidden="true" />
-              <span className="hidden sm:inline">{room.counterpartMobileNumber}</span>
+              <Phone className="h-4 w-4 shrink-0" aria-hidden="true" />
               <span className="sm:hidden">Call</span>
+              <span className="hidden sm:inline">{room.counterpartMobileNumber}</span>
             </a>
           )}
         </div>
@@ -440,9 +440,9 @@ export function NegotiationChatRoomPage() {
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={handleKeyDown}
               maxLength={MAX_MESSAGE_LENGTH}
-              placeholder="Write a message about hospital ward, shift timing, or BDT rate..."
+              placeholder="Write a message..."
               aria-label="Negotiation chat message"
-              className="block max-h-32 min-h-[44px] w-full resize-none rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-100"
+              className="no-scrollbar block max-h-32 min-h-[44px] w-full resize-none rounded-xl border border-slate-300 bg-slate-50 px-3.5 py-2.5 text-sm leading-snug text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-100"
             />
             {draft.length > 1600 && (
               <span className="mt-1 block text-right text-[11px] text-slate-500">

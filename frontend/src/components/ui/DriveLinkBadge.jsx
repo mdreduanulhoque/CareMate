@@ -26,7 +26,7 @@ export function DriveLinkBadge({ url, reachable, note, onRecheck, rechecking = f
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-[36px] max-w-full items-center gap-1.5 text-sm font-semibold text-teal-700 underline-offset-2 hover:text-teal-900 hover:underline"
+            className="inline-flex min-h-[44px] max-w-full items-center gap-1.5 text-sm font-semibold text-teal-700 underline-offset-2 hover:text-teal-900 hover:underline"
           >
             <ExternalLink className="h-4 w-4 shrink-0" aria-hidden="true" />
             <span className="truncate">Open Google Drive Documents</span>
@@ -40,7 +40,7 @@ export function DriveLinkBadge({ url, reachable, note, onRecheck, rechecking = f
             type="button"
             onClick={onRecheck}
             disabled={rechecking}
-            className="inline-flex min-h-[36px] items-center gap-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-60"
+            className="inline-flex min-h-[44px] items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-60"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${rechecking ? 'animate-spin' : ''}`} />
             <span>Re-check</span>

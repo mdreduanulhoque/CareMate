@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import * as hireApi from '../../api/hireApi';
 import { AlertBanner } from '../../components/ui/AlertBanner';
 import { Button } from '../../components/ui/Button';
+import { getButtonClasses } from '../../components/ui/buttonStyles';
 import { useAuth } from '../../context/useAuth';
 import { useWebSocket } from '../../context/useWebSocket';
 import { CustomerReviewsModal } from '../feedback/CustomerReviewsModal';
@@ -182,17 +183,13 @@ export function CaretakerRequestsGatePage() {
             tap Hire.
           </p>
           <div className="flex flex-wrap justify-center gap-2 pt-1">
-            <Link to="/caretaker/bookings" className="inline-block">
-              <Button variant="outline">
-                <CalendarCheck2 className="h-4 w-4" aria-hidden="true" />
-                <span>View My Bookings</span>
-              </Button>
+            <Link to="/caretaker/bookings" className={getButtonClasses({ variant: 'outline' })}>
+              <CalendarCheck2 className="h-4 w-4" aria-hidden="true" />
+              <span>View My Bookings</span>
             </Link>
-            <Link to="/caretaker/profile" className="inline-block">
-              <Button variant="outline">
-                <Award className="h-4 w-4" aria-hidden="true" />
-                <span>Profile &amp; Certifications</span>
-              </Button>
+            <Link to="/caretaker/profile" className={getButtonClasses({ variant: 'outline' })}>
+              <Award className="h-4 w-4" aria-hidden="true" />
+              <span>Profile &amp; Certifications</span>
             </Link>
           </div>
         </div>

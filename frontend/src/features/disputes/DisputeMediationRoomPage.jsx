@@ -364,7 +364,7 @@ export function DisputeMediationRoomPage() {
                   );
                   setEditingStatement(true);
                 }}
-                className="inline-flex min-h-[36px] items-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                className="inline-flex min-h-[44px] items-center rounded-lg border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
               >
                 Update My Written Payment Statement
               </button>
