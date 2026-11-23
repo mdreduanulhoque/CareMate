@@ -11,14 +11,15 @@ import com.carebridge.common.BadRequestException;
 import com.carebridge.common.ConflictException;
 import com.carebridge.common.ForbiddenException;
 import com.carebridge.common.NotFoundException;
+import com.carebridge.common.TransactionCommitHooks;
+import com.carebridge.notification.RealtimeEventDispatcher;
+import com.carebridge.notification.dto.AdminQueueAlertEvent;
 import com.carebridge.user.Role;
 import com.carebridge.user.User;
 import com.carebridge.user.UserRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -36,19 +37,22 @@ public class CaretakerVerificationService {
     private final CaretakerProfileRepository profileRepository;
     private final CaretakerCertificationRepository certificationRepository;
     private final AsyncDriveValidationService asyncDriveValidationService;
+    private final RealtimeEventDispatcher realtimeEventDispatcher;
 
     public CaretakerVerificationService(
             UserRepository userRepository,
             CaretakerApplicationRepository applicationRepository,
             CaretakerProfileRepository profileRepository,
             CaretakerCertificationRepository certificationRepository,
-            AsyncDriveValidationService asyncDriveValidationService
+            AsyncDriveValidationService asyncDriveValidationService,
+            RealtimeEventDispatcher realtimeEventDispatcher
     ) {
         this.userRepository = userRepository;
         this.applicationRepository = applicationRepository;
         this.profileRepository = profileRepository;
         this.certificationRepository = certificationRepository;
         this.asyncDriveValidationService = asyncDriveValidationService;
+        this.realtimeEventDispatcher = realtimeEventDispatcher;
     }
 
     @Transactional(readOnly = true)
@@ -113,7 +117,21 @@ public class CaretakerVerificationService {
         }
 
         Long applicationId = saved.getId();
-        runAfterCommit(() -> asyncDriveValidationService.validateApplicationDriveLink(applicationId));
+        boolean isReapplication = saved.getApplicationNumber() > 1;
+        AdminQueueAlertEvent adminAlert = AdminQueueAlertEvent.of(
+                isReapplication ? "REAPPLICATION" : "NEW_APPLICATION",
+                applicationId,
+                isReapplication
+                        ? "Caretaker Re-Application #" + saved.getApplicationNumber()
+                        : "New Caretaker Application #1",
+                caretaker.getFullName() + " submitted verification documents (" + saved.getQualification() + ").",
+                caretaker.getId(),
+                caretaker.getFullName()
+        );
+        TransactionCommitHooks.runAfterCommit(() -> {
+            asyncDriveValidationService.validateApplicationDriveLink(applicationId);
+            realtimeEventDispatcher.publishAdminAlert(adminAlert);
+        });
 
         return CaretakerApplicationResponse.from(saved);
     }
@@ -141,7 +159,19 @@ public class CaretakerVerificationService {
 
         CaretakerCertification saved = certificationRepository.saveAndFlush(certification);
         Long certificationId = saved.getId();
-        runAfterCommit(() -> asyncDriveValidationService.validateCertificationDriveLink(certificationId));
+        User caretaker = profile.getUser();
+        AdminQueueAlertEvent adminAlert = AdminQueueAlertEvent.of(
+                "NEW_CERTIFICATION",
+                certificationId,
+                "New Certification Verification Request",
+                caretaker.getFullName() + " submitted \"" + saved.getTitle() + "\" for verification.",
+                caretaker.getId(),
+                caretaker.getFullName()
+        );
+        TransactionCommitHooks.runAfterCommit(() -> {
+            asyncDriveValidationService.validateCertificationDriveLink(certificationId);
+            realtimeEventDispatcher.publishAdminAlert(adminAlert);
+        });
 
         return CertificationResponse.from(saved);
     }
@@ -179,18 +209,5 @@ public class CaretakerVerificationService {
         }
         String trimmed = raw.trim();
         return trimmed.isEmpty() ? null : trimmed;
-    }
-
-    private void runAfterCommit(Runnable action) {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    action.run();
-                }
-            });
-        } else {
-            action.run();
-        }
     }
 }

@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AppShell } from './components/layout/AppShell';
 import { AuthProvider } from './context/AuthContext';
 import { getHomePathForRole, useAuth } from './context/useAuth';
+import { WebSocketProvider } from './context/WebSocketContext';
 import { AdminApplicationsPage } from './features/admin/AdminApplicationsPage';
 import { AdminCertificationsPage } from './features/admin/AdminCertificationsPage';
 import { CaretakerRegisterPage } from './features/auth/CaretakerRegisterPage';
@@ -9,6 +10,8 @@ import { CustomerRegisterPage } from './features/auth/CustomerRegisterPage';
 import { LoginPage } from './features/auth/LoginPage';
 import { CaretakerProfilePage } from './features/caretaker/CaretakerProfilePage';
 import { CaretakerRequestsGatePage } from './features/caretaker/CaretakerRequestsGatePage';
+import { NegotiationChatRoomPage } from './features/chat/NegotiationChatRoomPage';
+import { NegotiationChatsPage } from './features/chat/NegotiationChatsPage';
 import { ProfilePage } from './features/dashboard/ProfilePage';
 import { RoleWorkspacePage } from './features/dashboard/RoleWorkspacePage';
 import { CaretakerPublicProfilePage } from './features/feed/CaretakerPublicProfilePage';
@@ -30,93 +33,79 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Routes>
-          <Route path="/" element={<RootRedirect />} />
+        <WebSocketProvider>
+          <Routes>
+            <Route path="/" element={<RootRedirect />} />
 
-          <Route element={<PublicOnlyRoute />}>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register/customer" element={<CustomerRegisterPage />} />
-            <Route path="/register/caretaker" element={<CaretakerRegisterPage />} />
-          </Route>
-
-          <Route element={<ProtectedRoute allowedRoles={['CUSTOMER']} />}>
-            <Route path="/customer" element={<AppShell />}>
-              <Route path="feed" element={<HuntersFeedPage />} />
-              <Route
-                path="caretakers/:caretakerUserId"
-                element={<CaretakerPublicProfilePage />}
-              />
-              <Route
-                path="chats"
-                element={
-                  <RoleWorkspacePage
-                    title="Negotiation Chats"
-                    description="Unlock caretaker contacts and negotiate shift timing and rates over real-time WebSocket chat."
-                    upcomingPhase="Phase 4"
-                  />
-                }
-              />
-              <Route
-                path="hires"
-                element={
-                  <RoleWorkspacePage
-                    title="My Hires"
-                    description="Track active hospital contracts, confirm payments, and leave mutual feedback."
-                    upcomingPhase="Phase 5–7"
-                  />
-                }
-              />
-              <Route path="profile" element={<ProfilePage />} />
+            <Route element={<PublicOnlyRoute />}>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register/customer" element={<CustomerRegisterPage />} />
+              <Route path="/register/caretaker" element={<CaretakerRegisterPage />} />
             </Route>
-          </Route>
 
-          <Route element={<ProtectedRoute allowedRoles={['CARETAKER']} />}>
-            <Route path="/caretaker" element={<AppShell />}>
-              <Route path="requests" element={<CaretakerRequestsGatePage />} />
-              <Route
-                path="chats"
-                element={
-                  <RoleWorkspacePage
-                    title="Negotiation Chats"
-                    description="Communicate directly with hospitalized patients' relatives in real time."
-                    upcomingPhase="Phase 4"
-                  />
-                }
-              />
-              <Route
-                path="bookings"
-                element={
-                  <RoleWorkspacePage
-                    title="My Bookings"
-                    description="Manage scheduled shifts, early completions, payment confirmations, and reviews."
-                    upcomingPhase="Phase 5–7"
-                  />
-                }
-              />
-              <Route path="profile" element={<CaretakerProfilePage />} />
+            <Route element={<ProtectedRoute allowedRoles={['CUSTOMER']} />}>
+              <Route path="/customer" element={<AppShell />}>
+                <Route path="feed" element={<HuntersFeedPage />} />
+                <Route
+                  path="caretakers/:caretakerUserId"
+                  element={<CaretakerPublicProfilePage />}
+                />
+                <Route path="chats" element={<NegotiationChatsPage />} />
+                <Route path="chats/:roomId" element={<NegotiationChatRoomPage />} />
+                <Route
+                  path="hires"
+                  element={
+                    <RoleWorkspacePage
+                      title="My Hires"
+                      description="Track active hospital contracts, confirm payments, and leave mutual feedback."
+                      upcomingPhase="Phase 5–7"
+                    />
+                  }
+                />
+                <Route path="profile" element={<ProfilePage />} />
+              </Route>
             </Route>
-          </Route>
 
-          <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
-            <Route path="/admin" element={<AppShell />}>
-              <Route path="applications" element={<AdminApplicationsPage />} />
-              <Route path="certifications" element={<AdminCertificationsPage />} />
-              <Route
-                path="disputes"
-                element={
-                  <RoleWorkspacePage
-                    title="Payment Dispute Mediation"
-                    description="Join 3-way real-time WebSocket dispute rooms to mediate payment disagreements fairly."
-                    upcomingPhase="Phase 7"
-                  />
-                }
-              />
-              <Route path="users" element={<ProfilePage />} />
+            <Route element={<ProtectedRoute allowedRoles={['CARETAKER']} />}>
+              <Route path="/caretaker" element={<AppShell />}>
+                <Route path="requests" element={<CaretakerRequestsGatePage />} />
+                <Route path="chats" element={<NegotiationChatsPage />} />
+                <Route path="chats/:roomId" element={<NegotiationChatRoomPage />} />
+                <Route
+                  path="bookings"
+                  element={
+                    <RoleWorkspacePage
+                      title="My Bookings"
+                      description="Manage scheduled shifts, early completions, payment confirmations, and reviews."
+                      upcomingPhase="Phase 5–7"
+                    />
+                  }
+                />
+                <Route path="profile" element={<CaretakerProfilePage />} />
+              </Route>
             </Route>
-          </Route>
 
-          <Route path="*" element={<RootRedirect />} />
-        </Routes>
+            <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
+              <Route path="/admin" element={<AppShell />}>
+                <Route path="applications" element={<AdminApplicationsPage />} />
+                <Route path="certifications" element={<AdminCertificationsPage />} />
+                <Route
+                  path="disputes"
+                  element={
+                    <RoleWorkspacePage
+                      title="Payment Dispute Mediation"
+                      description="Join 3-way real-time WebSocket dispute rooms to mediate payment disagreements fairly."
+                      upcomingPhase="Phase 7"
+                    />
+                  }
+                />
+                <Route path="users" element={<ProfilePage />} />
+              </Route>
+            </Route>
+
+            <Route path="*" element={<RootRedirect />} />
+          </Routes>
+        </WebSocketProvider>
       </AuthProvider>
     </BrowserRouter>
   );

@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { DriveLinkBadge } from '../../components/ui/DriveLinkBadge';
 import { RejectReasonModal } from '../../components/ui/RejectReasonModal';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { useWebSocket } from '../../context/useWebSocket';
 
 const FILTERS = [
   { key: 'PENDING', label: 'Pending' },
@@ -23,6 +24,7 @@ function formatDateTime(isoString) {
 }
 
 export function AdminCertificationsPage() {
+  const { isConnected, subscribe } = useWebSocket();
   const [statusFilter, setStatusFilter] = useState('PENDING');
   const [certifications, setCertifications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -50,6 +52,16 @@ export function AdminCertificationsPage() {
   useEffect(() => {
     loadCertifications();
   }, [loadCertifications]);
+
+  // Auto-refresh Admin Certifications queue on real-time /topic/admin/alerts
+  useEffect(() => {
+    return subscribe('/topic/admin/alerts', (event) => {
+      if (event?.eventType === 'NEW_CERTIFICATION') {
+        setFeedback(`Live alert: ${event.title} — ${event.message}`);
+        loadCertifications();
+      }
+    });
+  }, [subscribe, loadCertifications]);
 
   async function handleApprove(cert) {
     setBusyId(cert.id);
@@ -102,9 +114,17 @@ export function AdminCertificationsPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900">
-            Certification Verification Queue
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">
+              Certification Verification Queue
+            </h1>
+            {isConnected && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                Live Queue
+              </span>
+            )}
+          </div>
           <p className="text-sm text-slate-600">
             Verify additional certificates added by approved caretakers without disrupting their
             live feed profile.

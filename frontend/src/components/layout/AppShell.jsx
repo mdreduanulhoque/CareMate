@@ -1,5 +1,6 @@
 import {
   Award,
+  Bell,
   BriefcaseMedical,
   CalendarCheck2,
   ClipboardCheck,
@@ -10,10 +11,14 @@ import {
   Search,
   UserCircle2,
   Users,
+  X,
 } from 'lucide-react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/useAuth';
+import { useWebSocket } from '../../context/useWebSocket';
 import { BrandLogo } from '../ui/BrandLogo';
+import { ConnectionBanner } from '../ui/ConnectionBanner';
 import { StatusBadge } from '../ui/StatusBadge';
 
 const NAV_BY_ROLE = {
@@ -38,8 +43,93 @@ const NAV_BY_ROLE = {
 };
 
 export function AppShell() {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
+  const { subscribe } = useWebSocket();
+  const location = useLocation();
   const navItems = NAV_BY_ROLE[user?.role] || [];
+
+  const [liveToast, setLiveToast] = useState(null);
+
+  useEffect(() => {
+    if (!user) {
+      return undefined;
+    }
+
+    const cleanups = [];
+
+    // Private per-user notifications (new chat messages, contact unlocks, verification decisions)
+    cleanups.push(
+      subscribe('/user/queue/notifications', (event) => {
+        if (!event?.title) {
+          return;
+        }
+        if (event.eventType === 'APPLICATION_APPROVED') {
+          refreshUser().catch(() => {});
+        }
+
+        // Suppress chat message toast when the user is already inside that exact room
+        if (
+          event.eventType === 'NEW_CHAT_MESSAGE' &&
+          event.roomId &&
+          location.pathname.includes(encodeURIComponent(event.roomId))
+        ) {
+          return;
+        }
+
+        let actionTo = null;
+        if (event.roomId) {
+          const base = user.role === 'CUSTOMER' ? '/customer/chats' : '/caretaker/chats';
+          actionTo = `${base}/${encodeURIComponent(event.roomId)}`;
+        } else if (
+          event.eventType === 'APPLICATION_APPROVED' ||
+          event.eventType === 'CERTIFICATION_APPROVED'
+        ) {
+          actionTo = '/caretaker/profile';
+        }
+
+        setLiveToast({
+          id: Date.now(),
+          title: event.title,
+          message: event.message,
+          actionTo,
+          actionLabel: event.roomId ? 'Open Chat' : 'View',
+        });
+      })
+    );
+
+    // Live Admin queue alerts across every Admin tab
+    if (user.role === 'ADMIN') {
+      cleanups.push(
+        subscribe('/topic/admin/alerts', (event) => {
+          if (!event?.title) {
+            return;
+          }
+          const isCert = event.eventType === 'NEW_CERTIFICATION';
+          setLiveToast({
+            id: Date.now(),
+            title: event.title,
+            message: event.message,
+            actionTo: isCert ? '/admin/certifications' : '/admin/applications',
+            actionLabel: isCert ? 'Review Cert' : 'Review App',
+          });
+        })
+      );
+    }
+
+    return () => {
+      cleanups.forEach((fn) => fn());
+    };
+  }, [user, subscribe, refreshUser, location.pathname]);
+
+  useEffect(() => {
+    if (!liveToast) {
+      return undefined;
+    }
+    const timer = setTimeout(() => {
+      setLiveToast((current) => (current?.id === liveToast.id ? null : current));
+    }, 6500);
+    return () => clearTimeout(timer);
+  }, [liveToast]);
 
   return (
     <div className="flex min-h-dvh flex-col bg-slate-50">
@@ -84,7 +174,46 @@ export function AppShell() {
             </button>
           </div>
         </div>
+        <ConnectionBanner />
       </header>
+
+      {liveToast && (
+        <div className="mx-auto w-full max-w-5xl px-4 pt-3">
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex items-start justify-between gap-3 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-950 shadow-xs"
+          >
+            <div className="flex min-w-0 items-start gap-2.5">
+              <Bell className="mt-0.5 h-4 w-4 shrink-0 text-teal-700" aria-hidden="true" />
+              <div className="min-w-0">
+                <p className="font-bold">{liveToast.title}</p>
+                <p className="truncate text-xs text-teal-900">{liveToast.message}</p>
+              </div>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-1.5">
+              {liveToast.actionTo && (
+                <Link
+                  to={liveToast.actionTo}
+                  onClick={() => setLiveToast(null)}
+                  className="inline-flex min-h-[36px] items-center rounded-lg bg-teal-700 px-3 text-xs font-bold text-white hover:bg-teal-800"
+                >
+                  {liveToast.actionLabel}
+                </Link>
+              )}
+              <button
+                type="button"
+                onClick={() => setLiveToast(null)}
+                aria-label="Dismiss notification"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-teal-800 hover:bg-teal-100"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-24 pt-5 md:pb-10">
         <Outlet />

@@ -4,11 +4,12 @@ import com.carebridge.caretaker.dto.CaretakerOwnProfileResponse;
 import com.carebridge.caretaker.dto.PublicCertificationBadge;
 import com.carebridge.caretaker.dto.UpdateCaretakerProfileRequest;
 import com.carebridge.common.ForbiddenException;
+import com.carebridge.common.TransactionCommitHooks;
+import com.carebridge.notification.RealtimeEventDispatcher;
+import com.carebridge.notification.dto.FeedAvailabilityEvent;
 import com.carebridge.storage.AvatarStorageService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -19,15 +20,18 @@ public class CaretakerProfileService {
     private final CaretakerProfileRepository profileRepository;
     private final CaretakerCertificationRepository certificationRepository;
     private final AvatarStorageService avatarStorageService;
+    private final RealtimeEventDispatcher realtimeEventDispatcher;
 
     public CaretakerProfileService(
             CaretakerProfileRepository profileRepository,
             CaretakerCertificationRepository certificationRepository,
-            AvatarStorageService avatarStorageService
+            AvatarStorageService avatarStorageService,
+            RealtimeEventDispatcher realtimeEventDispatcher
     ) {
         this.profileRepository = profileRepository;
         this.certificationRepository = certificationRepository;
         this.avatarStorageService = avatarStorageService;
+        this.realtimeEventDispatcher = realtimeEventDispatcher;
     }
 
     @Transactional(readOnly = true)
@@ -49,6 +53,8 @@ public class CaretakerProfileService {
         profile.setAvailable(request.available());
 
         CaretakerProfile saved = profileRepository.saveAndFlush(profile);
+        FeedAvailabilityEvent event = FeedAvailabilityEvent.from(saved);
+        TransactionCommitHooks.runAfterCommit(() -> realtimeEventDispatcher.publishFeedAvailability(event));
         return toResponse(saved);
     }
 
@@ -57,6 +63,8 @@ public class CaretakerProfileService {
         CaretakerProfile profile = requireApprovedProfile(caretakerUserId);
         profile.setAvailable(available);
         CaretakerProfile saved = profileRepository.saveAndFlush(profile);
+        FeedAvailabilityEvent event = FeedAvailabilityEvent.from(saved);
+        TransactionCommitHooks.runAfterCommit(() -> realtimeEventDispatcher.publishFeedAvailability(event));
         return toResponse(saved);
     }
 
@@ -70,7 +78,7 @@ public class CaretakerProfileService {
         CaretakerProfile saved = profileRepository.saveAndFlush(profile);
 
         if (previousUrl != null && !previousUrl.equals(storedUrl)) {
-            deleteAfterCommit(previousUrl);
+            TransactionCommitHooks.runAfterCommit(() -> avatarStorageService.deleteIfManaged(previousUrl));
         }
 
         return toResponse(saved);
@@ -101,18 +109,5 @@ public class CaretakerProfileService {
         }
         String trimmed = rawBio.trim();
         return trimmed.isEmpty() ? null : trimmed;
-    }
-
-    private void deleteAfterCommit(String oldAvatarUrl) {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    avatarStorageService.deleteIfManaged(oldAvatarUrl);
-                }
-            });
-        } else {
-            avatarStorageService.deleteIfManaged(oldAvatarUrl);
-        }
     }
 }

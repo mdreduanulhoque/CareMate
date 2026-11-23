@@ -1,5 +1,6 @@
 package com.carebridge.feed;
 
+import com.carebridge.booking.ContactUnlockRepository;
 import com.carebridge.caretaker.CaretakerCertification;
 import com.carebridge.caretaker.CaretakerCertificationRepository;
 import com.carebridge.caretaker.CaretakerProfile;
@@ -35,13 +36,16 @@ public class HuntersFeedService {
 
     private final CaretakerProfileRepository profileRepository;
     private final CaretakerCertificationRepository certificationRepository;
+    private final ContactUnlockRepository contactUnlockRepository;
 
     public HuntersFeedService(
             CaretakerProfileRepository profileRepository,
-            CaretakerCertificationRepository certificationRepository
+            CaretakerCertificationRepository certificationRepository,
+            ContactUnlockRepository contactUnlockRepository
     ) {
         this.profileRepository = profileRepository;
         this.certificationRepository = certificationRepository;
+        this.contactUnlockRepository = contactUnlockRepository;
     }
 
     @Transactional(readOnly = true)
@@ -115,7 +119,13 @@ public class HuntersFeedService {
                 .map(PublicCertificationBadge::from)
                 .toList();
 
-        return FeedCaretakerDetailResponse.from(profile, approvedCerts, false);
+        boolean contactUnlocked = requester.getRole() == Role.CUSTOMER
+                && contactUnlockRepository.existsByCustomerIdAndCaretakerId(
+                        requester.getUserId(),
+                        profile.getUser().getId()
+                );
+
+        return FeedCaretakerDetailResponse.from(profile, approvedCerts, contactUnlocked);
     }
 
     /**

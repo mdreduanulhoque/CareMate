@@ -3,6 +3,7 @@ import {
   CheckCircle2,
   ChevronRight,
   MapPin,
+  RefreshCw,
   RotateCcw,
   Search,
   ShieldCheck,
@@ -16,6 +17,7 @@ import * as feedAndProfileApi from '../../api/feedAndProfileApi';
 import { AlertBanner } from '../../components/ui/AlertBanner';
 import { Button } from '../../components/ui/Button';
 import { CaretakerAvatar } from '../../components/ui/CaretakerAvatar';
+import { useWebSocket } from '../../context/useWebSocket';
 
 const DEFAULT_FILTERS = {
   availableOnly: true,
@@ -38,6 +40,8 @@ function formatRate(rateAmount, rateType) {
 }
 
 export function HuntersFeedPage() {
+  const { isConnected, subscribe } = useWebSocket();
+
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [searchInput, setSearchInput] = useState('');
   const [showMoreFilters, setShowMoreFilters] = useState(false);
@@ -45,10 +49,12 @@ export function HuntersFeedPage() {
   const [feedPage, setFeedPage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [hasNewLiveUpdates, setHasNewLiveUpdates] = useState(false);
 
   const loadFeed = useCallback(async (activeFilters) => {
     setLoading(true);
     setError('');
+    setHasNewLiveUpdates(false);
     try {
       const data = await feedAndProfileApi.fetchHuntersFeed(activeFilters);
       setFeedPage(data);
@@ -62,6 +68,40 @@ export function HuntersFeedPage() {
   useEffect(() => {
     loadFeed(filters);
   }, [filters, loadFeed]);
+
+  // Real-time availability & rate updates pushed over STOMP /topic/feed/availability
+  useEffect(() => {
+    return subscribe('/topic/feed/availability', (event) => {
+      if (!event?.caretakerUserId) {
+        return;
+      }
+      setFeedPage((prev) => {
+        if (!prev?.content) {
+          return prev;
+        }
+        let foundInList = false;
+        const updatedContent = prev.content.map((card) => {
+          if (card.caretakerUserId !== event.caretakerUserId) {
+            return card;
+          }
+          foundInList = true;
+          return {
+            ...card,
+            available: event.available,
+            rateAmount: event.rateAmount,
+            rateType: event.rateType,
+            locationArea: event.locationArea,
+          };
+        });
+
+        if (!foundInList && event.available) {
+          setHasNewLiveUpdates(true);
+        }
+
+        return foundInList ? { ...prev, content: updatedContent } : prev;
+      });
+    });
+  }, [subscribe]);
 
   function applyFilterPatch(patch) {
     setFilters((prev) => ({ ...prev, ...patch, page: 0 }));
@@ -236,7 +276,7 @@ export function HuntersFeedPage() {
         )}
       </section>
 
-      <div className="flex items-center justify-between text-xs font-medium text-slate-600">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-slate-600">
         <span>
           {loading
             ? 'Finding verified caretakers...'
@@ -244,11 +284,30 @@ export function HuntersFeedPage() {
                 feedPage?.totalElements === 1 ? '' : 's'
               } found`}
         </span>
-        <span className="inline-flex items-center gap-1 text-teal-800">
-          <ShieldCheck className="h-3.5 w-3.5" />
-          <span>Admin-verified only</span>
-        </span>
+        <div className="flex items-center gap-2.5">
+          {isConnected && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 border border-emerald-200">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Live Availability
+            </span>
+          )}
+          <span className="inline-flex items-center gap-1 text-teal-800">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            <span>Admin-verified only</span>
+          </span>
+        </div>
       </div>
+
+      {hasNewLiveUpdates && (
+        <button
+          type="button"
+          onClick={() => loadFeed(filters)}
+          className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-xs font-bold text-emerald-900 transition-colors hover:bg-emerald-100"
+        >
+          <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+          <span>New verified caretaker just became available — tap to refresh feed</span>
+        </button>
+      )}
 
       {error && (
         <AlertBanner variant="error" title="Could not load Hunters Feed">
