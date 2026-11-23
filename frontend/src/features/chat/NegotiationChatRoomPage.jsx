@@ -1,5 +1,6 @@
 import {
   ArrowLeft,
+  BriefcaseMedical,
   CheckCircle2,
   MapPin,
   Phone,
@@ -17,6 +18,7 @@ import { CaretakerAvatar } from '../../components/ui/CaretakerAvatar';
 import { useAuth } from '../../context/useAuth';
 import { useWebSocket } from '../../context/useWebSocket';
 import { formatDhakaChatTime } from '../../utils/dhakaTime';
+import { HireRequestModal } from '../hiring/HireRequestModal';
 
 const MAX_MESSAGE_LENGTH = 2000;
 
@@ -68,6 +70,8 @@ export function NegotiationChatRoomPage() {
   const [sendError, setSendError] = useState('');
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+  const [showHireModal, setShowHireModal] = useState(false);
+  const [hireSuccess, setHireSuccess] = useState(null);
 
   const messagesEndRef = useRef(null);
 
@@ -320,24 +324,55 @@ export function NegotiationChatRoomPage() {
           </div>
         </div>
 
-        {room.counterpartMobileNumber && (
-          <a
-            href={`tel:${room.counterpartMobileNumber}`}
-            className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-xl bg-teal-700 px-3.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-teal-800"
-          >
-            <Phone className="h-4 w-4" aria-hidden="true" />
-            <span className="hidden sm:inline">{room.counterpartMobileNumber}</span>
-            <span className="sm:hidden">Call</span>
-          </a>
-        )}
+        <div className="flex shrink-0 items-center gap-1.5">
+          {isCustomer && (
+            <button
+              type="button"
+              onClick={() => setShowHireModal(true)}
+              className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-xl bg-teal-700 px-3.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-teal-800"
+            >
+              <BriefcaseMedical className="h-4 w-4" aria-hidden="true" />
+              <span>Hire</span>
+            </button>
+          )}
+          {room.counterpartMobileNumber && (
+            <a
+              href={`tel:${room.counterpartMobileNumber}`}
+              aria-label={`Call ${room.counterpartName}`}
+              className={`inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-xl px-3 text-xs font-bold transition-colors ${
+                isCustomer
+                  ? 'border border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100'
+                  : 'bg-teal-700 text-white shadow-xs hover:bg-teal-800'
+              }`}
+            >
+              <Phone className="h-4 w-4" aria-hidden="true" />
+              <span className="hidden sm:inline">{room.counterpartMobileNumber}</span>
+              <span className="sm:hidden">Call</span>
+            </a>
+          )}
+        </div>
       </header>
 
       {/* Message stream */}
       <div className="flex-1 overflow-y-auto bg-slate-50/80 px-3 py-4 sm:px-5 space-y-3">
         <div className="mx-auto max-w-md rounded-xl border border-teal-200/80 bg-teal-50/70 px-3.5 py-2 text-center text-xs text-teal-900">
-          Negotiate hospital ward, patient needs, shift hours, and exact BDT rate directly here.
-          Formal on-platform booking activates in Phase 5.
+          {isCustomer
+            ? 'Discuss hospital ward, patient condition, shift hours, and exact BDT rate — then tap Hire above to send a formal booking.'
+            : 'Coordinate hospital ward, shift timing, and exact BDT rate here. Formal hire requests appear in your Requests tab.'}
         </div>
+
+        {hireSuccess && (
+          <AlertBanner variant="success" title="Hire Request Submitted">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span>
+                Contract #{hireSuccess.id} sent to {room.counterpartName}.
+              </span>
+              <Link to="/customer/hires" className="font-bold underline">
+                View My Hires
+              </Link>
+            </div>
+          </AlertBanner>
+        )}
 
         {messages.length === 0 ? (
           <div className="pt-4 text-center space-y-3">
@@ -428,6 +463,20 @@ export function NegotiationChatRoomPage() {
           </Button>
         </form>
       </div>
+
+      {showHireModal && isCustomer && (
+        <HireRequestModal
+          caretakerUserId={room.caretakerUserId}
+          caretakerName={room.counterpartName}
+          defaultRateAmount={room.counterpartRateAmount}
+          defaultRateType={room.counterpartRateType}
+          onClose={() => setShowHireModal(false)}
+          onSuccess={(created) => {
+            setShowHireModal(false);
+            setHireSuccess(created);
+          }}
+        />
+      )}
     </div>
   );
 }

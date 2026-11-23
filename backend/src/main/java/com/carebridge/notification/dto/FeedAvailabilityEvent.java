@@ -1,5 +1,6 @@
 package com.carebridge.notification.dto;
 
+import com.carebridge.booking.BookingScheduleValidator;
 import com.carebridge.caretaker.CaretakerProfile;
 import com.carebridge.caretaker.RateType;
 
@@ -13,9 +14,12 @@ public record FeedAvailabilityEvent(
         BigDecimal rateAmount,
         RateType rateType,
         String locationArea,
+        int todayBookingsCount,
+        boolean dailyCapReachedToday,
         Instant updatedAt
 ) {
-    public static FeedAvailabilityEvent from(CaretakerProfile profile) {
+    public static FeedAvailabilityEvent from(CaretakerProfile profile, int todayBookingsCount) {
+        int safeCount = Math.max(0, todayBookingsCount);
         return new FeedAvailabilityEvent(
                 profile.getUser().getId(),
                 profile.getId(),
@@ -23,6 +27,8 @@ public record FeedAvailabilityEvent(
                 profile.getRateAmount(),
                 profile.getRateType(),
                 profile.getLocationArea(),
+                safeCount,
+                safeCount >= BookingScheduleValidator.MAX_BOOKINGS_PER_DAY,
                 profile.getUpdatedAt() != null ? profile.getUpdatedAt() : Instant.now()
         );
     }

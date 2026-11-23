@@ -77,9 +77,22 @@ export function AppShell() {
         }
 
         let actionTo = null;
+        let actionLabel = 'View';
         if (event.roomId) {
           const base = user.role === 'CUSTOMER' ? '/customer/chats' : '/caretaker/chats';
           actionTo = `${base}/${encodeURIComponent(event.roomId)}`;
+          actionLabel = 'Open Chat';
+        } else if (event.contractId) {
+          if (user.role === 'CUSTOMER') {
+            actionTo = '/customer/hires';
+            actionLabel = 'View Hires';
+          } else if (event.eventType === 'HIRE_REQUESTED') {
+            actionTo = '/caretaker/requests';
+            actionLabel = 'Review Request';
+          } else {
+            actionTo = '/caretaker/bookings';
+            actionLabel = 'View Bookings';
+          }
         } else if (
           event.eventType === 'APPLICATION_APPROVED' ||
           event.eventType === 'CERTIFICATION_APPROVED'
@@ -92,7 +105,7 @@ export function AppShell() {
           title: event.title,
           message: event.message,
           actionTo,
-          actionLabel: event.roomId ? 'Open Chat' : 'View',
+          actionLabel,
         });
       })
     );

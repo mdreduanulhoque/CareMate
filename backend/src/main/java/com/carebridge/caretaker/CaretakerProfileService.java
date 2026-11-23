@@ -1,5 +1,6 @@
 package com.carebridge.caretaker;
 
+import com.carebridge.booking.HiringTransactionalService;
 import com.carebridge.caretaker.dto.CaretakerOwnProfileResponse;
 import com.carebridge.caretaker.dto.PublicCertificationBadge;
 import com.carebridge.caretaker.dto.UpdateCaretakerProfileRequest;
@@ -21,17 +22,20 @@ public class CaretakerProfileService {
     private final CaretakerCertificationRepository certificationRepository;
     private final AvatarStorageService avatarStorageService;
     private final RealtimeEventDispatcher realtimeEventDispatcher;
+    private final HiringTransactionalService hiringTransactionalService;
 
     public CaretakerProfileService(
             CaretakerProfileRepository profileRepository,
             CaretakerCertificationRepository certificationRepository,
             AvatarStorageService avatarStorageService,
-            RealtimeEventDispatcher realtimeEventDispatcher
+            RealtimeEventDispatcher realtimeEventDispatcher,
+            HiringTransactionalService hiringTransactionalService
     ) {
         this.profileRepository = profileRepository;
         this.certificationRepository = certificationRepository;
         this.avatarStorageService = avatarStorageService;
         this.realtimeEventDispatcher = realtimeEventDispatcher;
+        this.hiringTransactionalService = hiringTransactionalService;
     }
 
     @Transactional(readOnly = true)
@@ -53,7 +57,8 @@ public class CaretakerProfileService {
         profile.setAvailable(request.available());
 
         CaretakerProfile saved = profileRepository.saveAndFlush(profile);
-        FeedAvailabilityEvent event = FeedAvailabilityEvent.from(saved);
+        int todayCount = hiringTransactionalService.countTodayBlockingBookings(caretakerUserId);
+        FeedAvailabilityEvent event = FeedAvailabilityEvent.from(saved, todayCount);
         TransactionCommitHooks.runAfterCommit(() -> realtimeEventDispatcher.publishFeedAvailability(event));
         return toResponse(saved);
     }
@@ -63,7 +68,8 @@ public class CaretakerProfileService {
         CaretakerProfile profile = requireApprovedProfile(caretakerUserId);
         profile.setAvailable(available);
         CaretakerProfile saved = profileRepository.saveAndFlush(profile);
-        FeedAvailabilityEvent event = FeedAvailabilityEvent.from(saved);
+        int todayCount = hiringTransactionalService.countTodayBlockingBookings(caretakerUserId);
+        FeedAvailabilityEvent event = FeedAvailabilityEvent.from(saved, todayCount);
         TransactionCommitHooks.runAfterCommit(() -> realtimeEventDispatcher.publishFeedAvailability(event));
         return toResponse(saved);
     }

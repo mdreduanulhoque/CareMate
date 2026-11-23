@@ -1,6 +1,7 @@
 package com.carebridge.feed;
 
 import com.carebridge.booking.ContactUnlockRepository;
+import com.carebridge.booking.HiringTransactionalService;
 import com.carebridge.caretaker.CaretakerCertification;
 import com.carebridge.caretaker.CaretakerCertificationRepository;
 import com.carebridge.caretaker.CaretakerProfile;
@@ -37,15 +38,18 @@ public class HuntersFeedService {
     private final CaretakerProfileRepository profileRepository;
     private final CaretakerCertificationRepository certificationRepository;
     private final ContactUnlockRepository contactUnlockRepository;
+    private final HiringTransactionalService hiringTransactionalService;
 
     public HuntersFeedService(
             CaretakerProfileRepository profileRepository,
             CaretakerCertificationRepository certificationRepository,
-            ContactUnlockRepository contactUnlockRepository
+            ContactUnlockRepository contactUnlockRepository,
+            HiringTransactionalService hiringTransactionalService
     ) {
         this.profileRepository = profileRepository;
         this.certificationRepository = certificationRepository;
         this.contactUnlockRepository = contactUnlockRepository;
+        this.hiringTransactionalService = hiringTransactionalService;
     }
 
     @Transactional(readOnly = true)
@@ -82,11 +86,17 @@ public class HuntersFeedService {
 
         List<CaretakerProfile> profiles = resultPage.getContent();
         Map<Long, List<String>> approvedCertTitlesByProfileId = loadApprovedCertTitles(profiles);
+        List<Long> caretakerUserIds = profiles.stream()
+                .map(p -> p.getUser().getId())
+                .toList();
+        Map<Long, Integer> todayBookingsByCaretakerId =
+                hiringTransactionalService.countTodayBlockingBookingsByCaretakerIds(caretakerUserIds);
 
         List<FeedCaretakerCardResponse> cards = profiles.stream()
                 .map(profile -> FeedCaretakerCardResponse.from(
                         profile,
-                        approvedCertTitlesByProfileId.getOrDefault(profile.getId(), List.of())
+                        approvedCertTitlesByProfileId.getOrDefault(profile.getId(), List.of()),
+                        todayBookingsByCaretakerId.getOrDefault(profile.getUser().getId(), 0)
                 ))
                 .toList();
 
@@ -124,8 +134,9 @@ public class HuntersFeedService {
                         requester.getUserId(),
                         profile.getUser().getId()
                 );
+        int todayBookingsCount = hiringTransactionalService.countTodayBlockingBookings(profile.getUser().getId());
 
-        return FeedCaretakerDetailResponse.from(profile, approvedCerts, contactUnlocked);
+        return FeedCaretakerDetailResponse.from(profile, approvedCerts, contactUnlocked, todayBookingsCount);
     }
 
     /**

@@ -40,15 +40,21 @@ Use this file together with [CareMate.md](./CareMate.md), [AGENTS.md](./AGENTS.m
 - Persistent negotiation chat REST (`GET /api/chats/rooms`, `GET /api/chats/negotiation/{roomId}`, `GET/POST /api/chats/negotiation/{roomId}/messages`) and STOMP (`@MessageMapping("/chat/negotiation/{roomId}")`) backed by `ChatRoomAuthorizationService` (IDOR protection) and server-derived sender identity.
 - Bounded `@Async("notificationExecutor")` `RealtimeEventDispatcher` pushing after-commit live updates to `/topic/feed/availability` (availability/rate edits), `/topic/admin/alerts` (new applications, re-applications, new certifications), and `/user/{userId}/queue/notifications` (contact unlocks, incoming chat messages, verification decisions).
 - React `WebSocketProvider` (`@stomp/stompjs` + `sockjs-client` with bounded reconnect and automatic re-subscription), `ConnectionBanner`, `CaretakerPublicProfilePage` click-to-reveal unlock (one-tap `tel:` Call + Copy + Open Live Chat), `NegotiationChatsPage` & `NegotiationChatRoomPage` (server-`id` deduplication, `Asia/Dhaka` timestamps, REST reconnect sync/fallback), live Hunters Feed availability updates, and live Admin queue auto-refresh & toast alerts.
-- **Current Verified Baseline:** `72/72` backend tests passing (including live embedded-server STOMP over SockJS security & realtime broadcast tests), frontend `npm run lint` (0 errors, 0 warnings) + `npm run build` clean, live XAMPP MariaDB verified at Flyway `V3` (`ddl-auto=validate`).
+
+### Phase 5 — Thread-Safe Formal Hiring Engine, Max-2-Per-Day Cap & Early Termination (Done)
+- Flyway `V4__create_hire_contracts_table.sql` (`hire_contracts` with explicit `TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP(6)` for MariaDB 10.4 + MySQL 8.0 + H2 compatibility, `@Version` optimistic locking, composite caretaker/status/time & scheduler indexes).
+- Pure `Asia/Dhaka` schedule invariant validator (`BookingScheduleValidator`) enforcing valid durations, strict non-overlapping windows, and max **2 confirmed bookings per Dhaka calendar day** (including half-open `[start, end)` midnight-spanning shifts).
+- Strictly non-transactional fixed-stripe per-caretaker `ReentrantLock` coordinator (`BookingConcurrencyCoordinator`, 256 fair lock stripes) acquiring locks *before* `HiringTransactionalService` (`@Transactional`) and releasing *after* DB commit, paired with `LockModeType.OPTIMISTIC_FORCE_INCREMENT` on `CaretakerProfile.version` (`409 Conflict` mapped in `GlobalExceptionHandler`).
+- Complete REST API (`HireContractController` at `/api/hires`): Customer-only `POST /api/hires`, role/IDOR-scoped `GET /api/hires` & `/{id}`, privacy-safe `GET /api/hires/caretaker/{id}/schedule` (zero PII), Caretaker `accept`/`decline`, and participant/Admin `cancel` (pre-start, frees slot) & `end-early` (active shift -> `COMPLETED_PENDING_SETTLEMENT`, records `actualEndTime`, frees remaining schedule).
+- Live WebSocket pushes on `/user/{id}/queue/notifications` for every contract transition (`HIRE_REQUESTED`, `HIRE_ACCEPTED`, `HIRE_DECLINED`, `CONTRACT_CANCELLED`, `CONTRACT_ENDED_EARLY`) and live `todayBookingsCount`/`dailyCapReachedToday` updates on `/topic/feed/availability`.
+- Mobile-first Hiring UI: `HireRequestModal` (Dhaka time inputs + live daily schedule slots), `ContractReasonModal`, `ContractCard` (with Relative Trust Preview for Caretakers), `CustomerHiresPage` (`/customer/hires`), upgraded `CaretakerRequestsGatePage` (`/caretaker/requests`), `CaretakerBookingsPage` (`/caretaker/bookings`), Hire CTAs on Profile & Negotiation Chat, and live `2/2 Booked Today` badges on Hunters Feed.
+- **Current Verified Baseline:** `80/80` backend tests passing (including 3 `CountDownLatch` multithreaded concurrency stress tests), frontend `npm run lint` (0 warnings) + chunked `npm run build` clean, live XAMPP MariaDB verified at Flyway `V4` (`ddl-auto=validate`).
 
 ---
 
 ## Remaining Phases (Awaiting Explicit Permission Per Phase)
 
-- **NEXT -> Phase 5: Thread-Safe Formal Hiring Engine, Max-2-Per-Day Cap & Early Termination**
-  - Flyway `V4` (`hire_contracts`), per-caretaker `ReentrantLock` outside `@Transactional` + `@Version`, non-overlapping + max-2-per-calendar-day (`Asia/Dhaka`), Cancel & End Service Early, `CountDownLatch` concurrency tests, Hiring/Requests/Bookings UI.
-- **Phase 6: Automated Background Workers & Bidirectional 7-Day Editable Feedback System**
+- **NEXT -> Phase 6: Automated Background Workers & Bidirectional 7-Day Editable Feedback System**
   - Flyway `V5` (`reviews`), `ScheduledExecutorService` + `ThreadPoolTaskExecutor` auto-activation/auto-completion & dual pending review generation, 7-day editable window with `"Edited"` badge, scheduled lock & async aggregate recalculation.
 - **Phase 7: Dual Payment Confirmation & Real-Time 3-Way Admin Dispute Mediation**
   - Flyway `V6` (`payment_disputes`), Customer Payment Done, Caretaker Confirm (`CLOSED_PAID`) / Refuse (`PAYMENT_DISPUTED`), 3-Way WebSocket Dispute Room (`/topic/chat/dispute/{contractId}`), Admin resolution (`DISPUTE_RESOLVED`) & Admin Users tab.

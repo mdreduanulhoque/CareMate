@@ -16,6 +16,8 @@ import { ProfilePage } from './features/dashboard/ProfilePage';
 import { RoleWorkspacePage } from './features/dashboard/RoleWorkspacePage';
 import { CaretakerPublicProfilePage } from './features/feed/CaretakerPublicProfilePage';
 import { HuntersFeedPage } from './features/feed/HuntersFeedPage';
+import { CaretakerBookingsPage } from './features/hiring/CaretakerBookingsPage';
+import { CustomerHiresPage } from './features/hiring/CustomerHiresPage';
 import { ProtectedRoute, PublicOnlyRoute } from './routes/ProtectedRoute';
 
 function RootRedirect() {
@@ -52,16 +54,7 @@ export default function App() {
                 />
                 <Route path="chats" element={<NegotiationChatsPage />} />
                 <Route path="chats/:roomId" element={<NegotiationChatRoomPage />} />
-                <Route
-                  path="hires"
-                  element={
-                    <RoleWorkspacePage
-                      title="My Hires"
-                      description="Track active hospital contracts, confirm payments, and leave mutual feedback."
-                      upcomingPhase="Phase 5–7"
-                    />
-                  }
-                />
+                <Route path="hires" element={<CustomerHiresPage />} />
                 <Route path="profile" element={<ProfilePage />} />
               </Route>
             </Route>
@@ -71,16 +64,7 @@ export default function App() {
                 <Route path="requests" element={<CaretakerRequestsGatePage />} />
                 <Route path="chats" element={<NegotiationChatsPage />} />
                 <Route path="chats/:roomId" element={<NegotiationChatRoomPage />} />
-                <Route
-                  path="bookings"
-                  element={
-                    <RoleWorkspacePage
-                      title="My Bookings"
-                      description="Manage scheduled shifts, early completions, payment confirmations, and reviews."
-                      upcomingPhase="Phase 5–7"
-                    />
-                  }
-                />
+                <Route path="bookings" element={<CaretakerBookingsPage />} />
                 <Route path="profile" element={<CaretakerProfilePage />} />
               </Route>
             </Route>

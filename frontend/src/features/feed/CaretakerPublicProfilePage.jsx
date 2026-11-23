@@ -1,6 +1,7 @@
 import {
   ArrowLeft,
   Award,
+  BriefcaseMedical,
   Check,
   CheckCircle2,
   Copy,
@@ -22,6 +23,7 @@ import { Button } from '../../components/ui/Button';
 import { CaretakerAvatar } from '../../components/ui/CaretakerAvatar';
 import { useAuth } from '../../context/useAuth';
 import { useWebSocket } from '../../context/useWebSocket';
+import { HireRequestModal } from '../hiring/HireRequestModal';
 
 function formatRate(rateAmount, rateType) {
   if (rateAmount == null) return 'Rate negotiable';
@@ -43,6 +45,8 @@ export function CaretakerPublicProfilePage() {
   const [error, setError] = useState('');
   const [unlockError, setUnlockError] = useState('');
   const [copiedPhone, setCopiedPhone] = useState(false);
+  const [showHireModal, setShowHireModal] = useState(false);
+  const [hireSuccess, setHireSuccess] = useState(null);
 
   const loadDetail = useCallback(async () => {
     setLoading(true);
@@ -87,6 +91,8 @@ export function CaretakerPublicProfilePage() {
                 rateAmount: event.rateAmount,
                 rateType: event.rateType,
                 locationArea: event.locationArea,
+                todayBookingsCount: event.todayBookingsCount ?? prev.todayBookingsCount,
+                dailyCapReachedToday: event.dailyCapReachedToday ?? prev.dailyCapReachedToday,
               }
             : prev
         );
@@ -179,11 +185,19 @@ export function CaretakerPublicProfilePage() {
                   </span>
                   <span
                     className={`inline-flex items-center gap-1 font-bold ${
-                      detail.available ? 'text-emerald-700' : 'text-slate-500'
+                      !detail.available
+                        ? 'text-slate-500'
+                        : detail.dailyCapReachedToday
+                          ? 'text-amber-800'
+                          : 'text-emerald-700'
                     }`}
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
-                    {detail.available ? 'Available Now' : 'Currently Unavailable'}
+                    {!detail.available
+                      ? 'Currently Unavailable'
+                      : detail.dailyCapReachedToday
+                        ? 'Fully Booked Today (2/2)'
+                        : 'Available Now'}
                   </span>
                 </div>
 
@@ -326,12 +340,17 @@ export function CaretakerPublicProfilePage() {
 
                     <Link
                       to={`/customer/chats/${encodeURIComponent(unlockedContact.roomId)}`}
-                      className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-teal-800"
+                      className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-teal-700 bg-white px-4 py-2.5 text-sm font-semibold text-teal-800 transition-colors hover:bg-teal-50"
                     >
                       <MessageSquare className="h-4 w-4" aria-hidden="true" />
-                      <span>Open Live Negotiation Chat</span>
+                      <span>Open Negotiation Chat</span>
                     </Link>
                   </div>
+
+                  <Button fullWidth onClick={() => setShowHireModal(true)}>
+                    <BriefcaseMedical className="h-4 w-4" aria-hidden="true" />
+                    <span>Hire {detail.fullName}</span>
+                  </Button>
                 </>
               ) : (
                 <>
@@ -353,13 +372,46 @@ export function CaretakerPublicProfilePage() {
 
                   {unlockError && <AlertBanner variant="error">{unlockError}</AlertBanner>}
 
-                  <Button fullWidth onClick={handleUnlockContact} loading={unlocking}>
-                    <MessageSquare className="h-4 w-4" aria-hidden="true" />
-                    <span>Contact &amp; Unlock Phone Number</span>
-                  </Button>
+                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                    <Button fullWidth onClick={handleUnlockContact} loading={unlocking}>
+                      <MessageSquare className="h-4 w-4" aria-hidden="true" />
+                      <span>Contact &amp; Unlock</span>
+                    </Button>
+                    <Button fullWidth variant="outline" onClick={() => setShowHireModal(true)}>
+                      <BriefcaseMedical className="h-4 w-4" aria-hidden="true" />
+                      <span>Send Hire Request</span>
+                    </Button>
+                  </div>
                 </>
               )}
+
+              {hireSuccess && (
+                <AlertBanner variant="success" title="Formal Hire Request Sent">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span>
+                      Contract #{hireSuccess.id} is awaiting {detail.fullName}&apos;s acceptance.
+                    </span>
+                    <Link to="/customer/hires" className="font-bold underline">
+                      Track in My Hires
+                    </Link>
+                  </div>
+                </AlertBanner>
+              )}
             </section>
+          )}
+
+          {showHireModal && (
+            <HireRequestModal
+              caretakerUserId={detail.caretakerUserId}
+              caretakerName={detail.fullName}
+              defaultRateAmount={detail.rateAmount}
+              defaultRateType={detail.rateType}
+              onClose={() => setShowHireModal(false)}
+              onSuccess={(created) => {
+                setShowHireModal(false);
+                setHireSuccess(created);
+              }}
+            />
           )}
         </>
       ) : null}

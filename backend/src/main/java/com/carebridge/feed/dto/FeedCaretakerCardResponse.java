@@ -1,5 +1,6 @@
 package com.carebridge.feed.dto;
 
+import com.carebridge.booking.BookingScheduleValidator;
 import com.carebridge.caretaker.CaretakerProfile;
 import com.carebridge.caretaker.RateType;
 import com.carebridge.user.User;
@@ -21,6 +22,8 @@ public record FeedCaretakerCardResponse(
         BigDecimal rateAmount,
         RateType rateType,
         boolean available,
+        int todayBookingsCount,
+        boolean dailyCapReachedToday,
         BigDecimal avgRating,
         int completedHiresCount,
         BigDecimal hireAgainPercentage,
@@ -29,9 +32,11 @@ public record FeedCaretakerCardResponse(
 ) {
     public static FeedCaretakerCardResponse from(
             CaretakerProfile profile,
-            List<String> verifiedCertificationTitles
+            List<String> verifiedCertificationTitles,
+            int todayBookingsCount
     ) {
         User user = profile.getUser();
+        int safeCount = Math.max(0, todayBookingsCount);
         return new FeedCaretakerCardResponse(
                 profile.getId(),
                 user.getId(),
@@ -42,6 +47,8 @@ public record FeedCaretakerCardResponse(
                 profile.getRateAmount(),
                 profile.getRateType(),
                 profile.isAvailable(),
+                safeCount,
+                safeCount >= BookingScheduleValidator.MAX_BOOKINGS_PER_DAY,
                 profile.getAvgRating(),
                 profile.getCompletedHiresCount(),
                 profile.getHireAgainPercentage(),

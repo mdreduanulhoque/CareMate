@@ -91,6 +91,8 @@ export function HuntersFeedPage() {
             rateAmount: event.rateAmount,
             rateType: event.rateType,
             locationArea: event.locationArea,
+            todayBookingsCount: event.todayBookingsCount ?? card.todayBookingsCount,
+            dailyCapReachedToday: event.dailyCapReachedToday ?? card.dailyCapReachedToday,
           };
         });
 
@@ -383,12 +385,18 @@ export function HuntersFeedPage() {
                     </h2>
                     <span
                       className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
-                        caretaker.available
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-slate-100 text-slate-600'
+                        !caretaker.available
+                          ? 'bg-slate-100 text-slate-600'
+                          : caretaker.dailyCapReachedToday
+                            ? 'bg-amber-100 text-amber-900'
+                            : 'bg-emerald-100 text-emerald-800'
                       }`}
                     >
-                      {caretaker.available ? 'Available' : 'Unavailable'}
+                      {!caretaker.available
+                        ? 'Unavailable'
+                        : caretaker.dailyCapReachedToday
+                          ? '2/2 Booked Today'
+                          : 'Available'}
                     </span>
                   </div>
 
