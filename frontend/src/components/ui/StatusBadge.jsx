@@ -3,13 +3,20 @@ const BADGE_STYLES = {
   CARETAKER: 'bg-sky-100 text-sky-800 border-sky-200',
   ADMIN: 'bg-indigo-100 text-indigo-800 border-indigo-200',
   PENDING: 'bg-amber-100 text-amber-900 border-amber-200',
+  APPROVED: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  REJECTED: 'bg-rose-100 text-rose-800 border-rose-200',
   ACTIVE: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  NONE: 'bg-slate-100 text-slate-700 border-slate-200',
 };
 
 const LABELS = {
   CUSTOMER: 'Patient Relative',
   CARETAKER: 'Caretaker / Nurse',
   ADMIN: 'Administrator',
+  PENDING: 'Pending Review',
+  APPROVED: 'Approved',
+  REJECTED: 'Rejected',
+  NONE: 'Not Submitted',
 };
 
 export function StatusBadge({ status, label }) {

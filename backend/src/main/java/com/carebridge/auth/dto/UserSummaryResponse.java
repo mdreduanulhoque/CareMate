@@ -13,9 +13,10 @@ public record UserSummaryResponse(
         String address,
         Role role,
         boolean active,
+        boolean caretakerApproved,
         Instant createdAt
 ) {
-    public static UserSummaryResponse from(User user) {
+    public static UserSummaryResponse from(User user, boolean caretakerApproved) {
         return new UserSummaryResponse(
                 user.getId(),
                 user.getFullName(),
@@ -24,6 +25,7 @@ public record UserSummaryResponse(
                 user.getAddress(),
                 user.getRole(),
                 user.isActive(),
+                caretakerApproved,
                 user.getCreatedAt()
         );
     }

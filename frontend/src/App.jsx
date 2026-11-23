@@ -2,9 +2,13 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AppShell } from './components/layout/AppShell';
 import { AuthProvider } from './context/AuthContext';
 import { getHomePathForRole, useAuth } from './context/useAuth';
+import { AdminApplicationsPage } from './features/admin/AdminApplicationsPage';
+import { AdminCertificationsPage } from './features/admin/AdminCertificationsPage';
 import { CaretakerRegisterPage } from './features/auth/CaretakerRegisterPage';
 import { CustomerRegisterPage } from './features/auth/CustomerRegisterPage';
 import { LoginPage } from './features/auth/LoginPage';
+import { CaretakerProfilePage } from './features/caretaker/CaretakerProfilePage';
+import { CaretakerRequestsGatePage } from './features/caretaker/CaretakerRequestsGatePage';
 import { ProfilePage } from './features/dashboard/ProfilePage';
 import { RoleWorkspacePage } from './features/dashboard/RoleWorkspacePage';
 import { ProtectedRoute, PublicOnlyRoute } from './routes/ProtectedRoute';
@@ -71,16 +75,7 @@ export default function App() {
 
           <Route element={<ProtectedRoute allowedRoles={['CARETAKER']} />}>
             <Route path="/caretaker" element={<AppShell />}>
-              <Route
-                path="requests"
-                element={
-                  <RoleWorkspacePage
-                    title="Incoming Requests"
-                    description="Review customer ratings and accept or decline hospital care requests (max 2 non-overlapping shifts per day)."
-                    upcomingPhase="Phase 5"
-                  />
-                }
-              />
+              <Route path="requests" element={<CaretakerRequestsGatePage />} />
               <Route
                 path="chats"
                 element={
@@ -101,33 +96,14 @@ export default function App() {
                   />
                 }
               />
-              <Route path="profile" element={<ProfilePage />} />
+              <Route path="profile" element={<CaretakerProfilePage />} />
             </Route>
           </Route>
 
           <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
             <Route path="/admin" element={<AppShell />}>
-              <Route
-                path="applications"
-                element={
-                  <RoleWorkspacePage
-                    title="Caretaker Applications Queue"
-                    description="Inspect submitted NIDs, certificates, and Google Drive links to approve or reject applicants with clear reasons."
-                    upcomingPhase="Phase 2"
-                    showAdminCheck
-                  />
-                }
-              />
-              <Route
-                path="certifications"
-                element={
-                  <RoleWorkspacePage
-                    title="Certification Verification Queue"
-                    description="Verify new qualifications submitted by already-approved caretakers without interrupting their live profile."
-                    upcomingPhase="Phase 2"
-                  />
-                }
-              />
+              <Route path="applications" element={<AdminApplicationsPage />} />
+              <Route path="certifications" element={<AdminCertificationsPage />} />
               <Route
                 path="disputes"
                 element={

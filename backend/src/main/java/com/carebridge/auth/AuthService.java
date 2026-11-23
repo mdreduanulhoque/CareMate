@@ -5,6 +5,7 @@ import com.carebridge.auth.dto.CaretakerRegisterRequest;
 import com.carebridge.auth.dto.CustomerRegisterRequest;
 import com.carebridge.auth.dto.LoginRequest;
 import com.carebridge.auth.dto.UserSummaryResponse;
+import com.carebridge.caretaker.CaretakerProfileRepository;
 import com.carebridge.common.ConflictException;
 import com.carebridge.common.ForbiddenException;
 import com.carebridge.common.PhoneNumberNormalizer;
@@ -26,15 +27,18 @@ public class AuthService {
     private static final String INVALID_CREDENTIALS_MESSAGE = "Invalid mobile number or password.";
 
     private final UserRepository userRepository;
+    private final CaretakerProfileRepository caretakerProfileRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
     public AuthService(
             UserRepository userRepository,
+            CaretakerProfileRepository caretakerProfileRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService
     ) {
         this.userRepository = userRepository;
+        this.caretakerProfileRepository = caretakerProfileRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
     }
@@ -79,7 +83,7 @@ public class AuthService {
         }
 
         String token = jwtService.generateToken(user);
-        return AuthResponse.bearer(token, jwtService.getExpirationSeconds(), UserSummaryResponse.from(user));
+        return AuthResponse.bearer(token, jwtService.getExpirationSeconds(), toSummary(user));
     }
 
     @Transactional(readOnly = true)
@@ -89,7 +93,7 @@ public class AuthService {
         if (!user.isActive()) {
             throw new ForbiddenException("Your account is currently deactivated.");
         }
-        return UserSummaryResponse.from(user);
+        return toSummary(user);
     }
 
     private AuthResponse registerWithRole(
@@ -125,7 +129,13 @@ public class AuthService {
         }
 
         String token = jwtService.generateToken(savedUser);
-        return AuthResponse.bearer(token, jwtService.getExpirationSeconds(), UserSummaryResponse.from(savedUser));
+        return AuthResponse.bearer(token, jwtService.getExpirationSeconds(), UserSummaryResponse.from(savedUser, false));
+    }
+
+    private UserSummaryResponse toSummary(User user) {
+        boolean caretakerApproved = user.getRole() == Role.CARETAKER
+                && caretakerProfileRepository.existsByUserId(user.getId());
+        return UserSummaryResponse.from(user, caretakerApproved);
     }
 
     private String normalizeOptionalEmail(String rawEmail) {
