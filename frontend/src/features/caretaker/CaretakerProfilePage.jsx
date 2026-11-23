@@ -1,7 +1,8 @@
-import { LogOut, Mail, MapPin, Phone, ShieldCheck, User } from 'lucide-react';
+import { LogOut, Mail, MapPin, Phone, User } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useAuth } from '../../context/useAuth';
+import { CaretakerProfileEditor } from './CaretakerProfileEditor';
 import { CaretakerVerificationPanel } from './CaretakerVerificationPanel';
 
 export function CaretakerProfilePage() {
@@ -42,15 +43,6 @@ export function CaretakerProfilePage() {
             <dt className="w-24 text-slate-500">Email</dt>
             <dd className="font-medium text-slate-900">{user?.email || 'Not provided (optional)'}</dd>
           </div>
-          <div className="flex items-center gap-3 py-2.5">
-            <ShieldCheck className="h-4 w-4 shrink-0 text-teal-600" aria-hidden="true" />
-            <dt className="w-24 text-slate-500">Profile Edit</dt>
-            <dd className="font-medium text-slate-700">
-              {user?.caretakerApproved
-                ? 'Unlocked — bio, photo & BDT rates arrive in Phase 3'
-                : 'Locked until Admin verification approval'}
-            </dd>
-          </div>
         </dl>
 
         <div className="mt-4 border-t border-slate-100 pt-4">
@@ -60,6 +52,8 @@ export function CaretakerProfilePage() {
           </Button>
         </div>
       </section>
+
+      {user?.caretakerApproved && <CaretakerProfileEditor />}
 
       <CaretakerVerificationPanel showCertificationsWhenApproved />
     </div>

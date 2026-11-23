@@ -4,12 +4,23 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 public interface CaretakerCertificationRepository extends JpaRepository<CaretakerCertification, Long> {
 
     List<CaretakerCertification> findByCaretakerProfileIdOrderBySubmittedAtDesc(Long caretakerProfileId);
+
+    List<CaretakerCertification> findByCaretakerProfileIdAndVerificationStatusOrderByReviewedAtDesc(
+            Long caretakerProfileId,
+            VerificationStatus verificationStatus
+    );
+
+    List<CaretakerCertification> findByCaretakerProfileIdInAndVerificationStatusOrderByReviewedAtDesc(
+            Collection<Long> caretakerProfileIds,
+            VerificationStatus verificationStatus
+    );
 
     @Query("""
             SELECT c FROM CaretakerCertification c

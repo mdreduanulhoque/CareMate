@@ -11,6 +11,8 @@ import { CaretakerProfilePage } from './features/caretaker/CaretakerProfilePage'
 import { CaretakerRequestsGatePage } from './features/caretaker/CaretakerRequestsGatePage';
 import { ProfilePage } from './features/dashboard/ProfilePage';
 import { RoleWorkspacePage } from './features/dashboard/RoleWorkspacePage';
+import { CaretakerPublicProfilePage } from './features/feed/CaretakerPublicProfilePage';
+import { HuntersFeedPage } from './features/feed/HuntersFeedPage';
 import { ProtectedRoute, PublicOnlyRoute } from './routes/ProtectedRoute';
 
 function RootRedirect() {
@@ -39,15 +41,10 @@ export default function App() {
 
           <Route element={<ProtectedRoute allowedRoles={['CUSTOMER']} />}>
             <Route path="/customer" element={<AppShell />}>
+              <Route path="feed" element={<HuntersFeedPage />} />
               <Route
-                path="feed"
-                element={
-                  <RoleWorkspacePage
-                    title="Hunters Feed"
-                    description="Browse and filter Admin-verified nurses and hospital caretakers by availability, BDT budget, area, and rating."
-                    upcomingPhase="Phase 3"
-                  />
-                }
+                path="caretakers/:caretakerUserId"
+                element={<CaretakerPublicProfilePage />}
               />
               <Route
                 path="chats"

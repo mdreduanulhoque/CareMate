@@ -76,3 +76,44 @@ export async function apiRequest(path, options = {}) {
 
   return data;
 }
+
+export async function apiUpload(path, formData) {
+  const headers = {
+    Accept: 'application/json',
+  };
+
+  const token = getStoredToken();
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+  } catch {
+    throw new ApiError(
+      'Unable to upload file right now. Please check your internet connection and try again.',
+      0
+    );
+  }
+
+  const contentType = response.headers.get('content-type') || '';
+  const data = contentType.includes('application/json') ? await response.json() : null;
+
+  if (!response.ok) {
+    if (response.status === 401 && typeof unauthorizedHandler === 'function') {
+      unauthorizedHandler();
+    }
+    throw new ApiError(
+      data?.message || 'File upload failed. Please try again.',
+      response.status,
+      data?.fieldErrors || {}
+    );
+  }
+
+  return data;
+}

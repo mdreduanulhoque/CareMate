@@ -65,7 +65,7 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.GET, "/api/health").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/health", "/api/media/avatars/**").permitAll()
                         .requestMatchers(HttpMethod.POST,
                                 "/api/auth/register/customer",
                                 "/api/auth/register/caretaker",
