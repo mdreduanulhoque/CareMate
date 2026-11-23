@@ -1,6 +1,7 @@
 package com.carebridge.chat;
 
 import com.carebridge.chat.dto.ChatMessageResponse;
+import com.carebridge.chat.dto.DisputeRoomDetailResponse;
 import com.carebridge.chat.dto.NegotiationRoomDetailResponse;
 import com.carebridge.chat.dto.NegotiationRoomSummaryResponse;
 import com.carebridge.chat.dto.SendChatMessageRequest;
@@ -22,7 +23,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/chats")
-@PreAuthorize("hasAnyRole('CUSTOMER', 'CARETAKER')")
 public class ChatRestController {
 
     private final ChatService chatService;
@@ -32,6 +32,7 @@ public class ChatRestController {
     }
 
     @GetMapping("/rooms")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'CARETAKER')")
     public ResponseEntity<List<NegotiationRoomSummaryResponse>> listMyNegotiationRooms(
             @AuthenticationPrincipal CareBridgeUserPrincipal principal
     ) {
@@ -39,6 +40,7 @@ public class ChatRestController {
     }
 
     @GetMapping("/negotiation/{roomId}")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'CARETAKER')")
     public ResponseEntity<NegotiationRoomDetailResponse> getNegotiationRoomDetail(
             @AuthenticationPrincipal CareBridgeUserPrincipal principal,
             @PathVariable String roomId,
@@ -48,6 +50,7 @@ public class ChatRestController {
     }
 
     @GetMapping("/negotiation/{roomId}/messages")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'CARETAKER')")
     public ResponseEntity<List<ChatMessageResponse>> getNegotiationMessages(
             @AuthenticationPrincipal CareBridgeUserPrincipal principal,
             @PathVariable String roomId,
@@ -58,12 +61,34 @@ public class ChatRestController {
     }
 
     @PostMapping("/negotiation/{roomId}/messages")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'CARETAKER')")
     public ResponseEntity<ChatMessageResponse> sendNegotiationMessage(
             @AuthenticationPrincipal CareBridgeUserPrincipal principal,
             @PathVariable String roomId,
             @Valid @RequestBody SendChatMessageRequest request
     ) {
         ChatMessageResponse saved = chatService.sendNegotiationMessage(principal, roomId, request.content());
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+    }
+
+    @GetMapping("/dispute/{contractId}")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'CARETAKER', 'ADMIN')")
+    public ResponseEntity<DisputeRoomDetailResponse> getDisputeRoomDetail(
+            @AuthenticationPrincipal CareBridgeUserPrincipal principal,
+            @PathVariable Long contractId,
+            @RequestParam(name = "limit", defaultValue = "150") int limit
+    ) {
+        return ResponseEntity.ok(chatService.getDisputeRoomDetail(principal, contractId, limit));
+    }
+
+    @PostMapping("/dispute/{contractId}/messages")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'CARETAKER', 'ADMIN')")
+    public ResponseEntity<ChatMessageResponse> sendDisputeMessage(
+            @AuthenticationPrincipal CareBridgeUserPrincipal principal,
+            @PathVariable Long contractId,
+            @Valid @RequestBody SendChatMessageRequest request
+    ) {
+        ChatMessageResponse saved = chatService.sendDisputeMessage(principal, contractId, request.content());
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 }

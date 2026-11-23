@@ -5,6 +5,8 @@ import { getHomePathForRole, useAuth } from './context/useAuth';
 import { WebSocketProvider } from './context/WebSocketContext';
 import { AdminApplicationsPage } from './features/admin/AdminApplicationsPage';
 import { AdminCertificationsPage } from './features/admin/AdminCertificationsPage';
+import { AdminDisputesPage } from './features/admin/AdminDisputesPage';
+import { AdminUsersPage } from './features/admin/AdminUsersPage';
 import { CaretakerRegisterPage } from './features/auth/CaretakerRegisterPage';
 import { CustomerRegisterPage } from './features/auth/CustomerRegisterPage';
 import { LoginPage } from './features/auth/LoginPage';
@@ -13,7 +15,7 @@ import { CaretakerRequestsGatePage } from './features/caretaker/CaretakerRequest
 import { NegotiationChatRoomPage } from './features/chat/NegotiationChatRoomPage';
 import { NegotiationChatsPage } from './features/chat/NegotiationChatsPage';
 import { ProfilePage } from './features/dashboard/ProfilePage';
-import { RoleWorkspacePage } from './features/dashboard/RoleWorkspacePage';
+import { DisputeMediationRoomPage } from './features/disputes/DisputeMediationRoomPage';
 import { CaretakerPublicProfilePage } from './features/feed/CaretakerPublicProfilePage';
 import { HuntersFeedPage } from './features/feed/HuntersFeedPage';
 import { CaretakerBookingsPage } from './features/hiring/CaretakerBookingsPage';
@@ -55,6 +57,7 @@ export default function App() {
                 <Route path="chats" element={<NegotiationChatsPage />} />
                 <Route path="chats/:roomId" element={<NegotiationChatRoomPage />} />
                 <Route path="hires" element={<CustomerHiresPage />} />
+                <Route path="disputes/:contractId" element={<DisputeMediationRoomPage />} />
                 <Route path="profile" element={<ProfilePage />} />
               </Route>
             </Route>
@@ -65,6 +68,7 @@ export default function App() {
                 <Route path="chats" element={<NegotiationChatsPage />} />
                 <Route path="chats/:roomId" element={<NegotiationChatRoomPage />} />
                 <Route path="bookings" element={<CaretakerBookingsPage />} />
+                <Route path="disputes/:contractId" element={<DisputeMediationRoomPage />} />
                 <Route path="profile" element={<CaretakerProfilePage />} />
               </Route>
             </Route>
@@ -73,17 +77,9 @@ export default function App() {
               <Route path="/admin" element={<AppShell />}>
                 <Route path="applications" element={<AdminApplicationsPage />} />
                 <Route path="certifications" element={<AdminCertificationsPage />} />
-                <Route
-                  path="disputes"
-                  element={
-                    <RoleWorkspacePage
-                      title="Payment Dispute Mediation"
-                      description="Join 3-way real-time WebSocket dispute rooms to mediate payment disagreements fairly."
-                      upcomingPhase="Phase 7"
-                    />
-                  }
-                />
-                <Route path="users" element={<ProfilePage />} />
+                <Route path="disputes" element={<AdminDisputesPage />} />
+                <Route path="disputes/:contractId" element={<DisputeMediationRoomPage />} />
+                <Route path="users" element={<AdminUsersPage />} />
               </Route>
             </Route>
 

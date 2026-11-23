@@ -36,6 +36,16 @@ public class ChatStompController {
         chatService.sendNegotiationMessage(userPrincipal, roomId, request.content());
     }
 
+    @MessageMapping("/chat/dispute/{contractId}")
+    public void sendDisputeMessage(
+            @DestinationVariable Long contractId,
+            @Valid @Payload SendChatMessageRequest request,
+            Principal principal
+    ) {
+        CareBridgeUserPrincipal userPrincipal = extractPrincipal(principal);
+        chatService.sendDisputeMessage(userPrincipal, contractId, request.content());
+    }
+
     @MessageExceptionHandler(BusinessException.class)
     @SendToUser("/queue/errors")
     public StompErrorResponse handleBusinessException(BusinessException ex) {

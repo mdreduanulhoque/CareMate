@@ -1,6 +1,9 @@
 import {
+  AlertTriangle,
+  Banknote,
   CalendarClock,
   Check,
+  CheckCircle2,
   Clock,
   Edit3,
   FileText,
@@ -8,6 +11,7 @@ import {
   MapPin,
   MessageSquare,
   Phone,
+  Scale,
   ShieldCheck,
   Star,
   StopCircle,
@@ -42,6 +46,9 @@ export function ContractCard({
   onEndEarly,
   onOpenFeedback,
   onViewCustomerReviews,
+  onMarkPaymentDone,
+  onConfirmPayment,
+  onRefusePayment,
 }) {
   const isCustomer = viewerRole === 'CUSTOMER';
   const isCaretaker = viewerRole === 'CARETAKER';
@@ -55,6 +62,13 @@ export function ContractCard({
     : contract.customerAddress;
 
   const chatBasePath = isCustomer ? '/customer/chats' : '/caretaker/chats';
+  const disputeBasePath = isCustomer ? '/customer/disputes' : '/caretaker/disputes';
+  const isSettlementOrFinal = [
+    'COMPLETED_PENDING_SETTLEMENT',
+    'CLOSED_PAID',
+    'PAYMENT_DISPUTED',
+    'DISPUTE_RESOLVED',
+  ].includes(contract.status);
   const durationLabel = formatDurationLabel(
     contract.scheduledStartTime,
     contract.scheduledEndTime
@@ -191,15 +205,123 @@ export function ContractCard({
         </div>
       )}
 
-      {contract.status === 'COMPLETED_PENDING_SETTLEMENT' && (
-        <div className="rounded-xl border border-indigo-200 bg-indigo-50/70 px-3.5 py-2.5 text-xs text-indigo-950">
-          <strong>Settlement Stage:</strong> Shift completed and bidirectional feedback is ready.
-          Dual payment confirmation &amp; 3-way Admin dispute mediation activate in Phase 7.
+      {isSettlementOrFinal && (
+        <div
+          className={`space-y-1.5 rounded-xl border px-3.5 py-2.5 text-xs ${
+            contract.status === 'PAYMENT_DISPUTED'
+              ? 'border-rose-200 bg-rose-50/80 text-rose-950'
+              : contract.status === 'CLOSED_PAID' || contract.status === 'DISPUTE_RESOLVED'
+                ? 'border-emerald-200 bg-emerald-50/70 text-emerald-950'
+                : 'border-indigo-200 bg-indigo-50/70 text-indigo-950'
+          }`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2 font-bold">
+            <span className="inline-flex items-center gap-1.5">
+              {contract.status === 'PAYMENT_DISPUTED' ? (
+                <Scale className="h-3.5 w-3.5 text-rose-700" aria-hidden="true" />
+              ) : contract.status === 'CLOSED_PAID' || contract.status === 'DISPUTE_RESOLVED' ? (
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-700" aria-hidden="true" />
+              ) : (
+                <Banknote className="h-3.5 w-3.5 text-indigo-700" aria-hidden="true" />
+              )}
+              <span>
+                {contract.status === 'CLOSED_PAID'
+                  ? 'Dual Payment Confirmed · Contract Closed'
+                  : contract.status === 'PAYMENT_DISPUTED'
+                    ? 'Payment Disputed · Admin Mediation Active'
+                    : contract.status === 'DISPUTE_RESOLVED'
+                      ? 'Payment Dispute Resolved by Admin'
+                      : 'Dual Payment Settlement'}
+              </span>
+            </span>
+          </div>
+
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
+            <span>
+              <strong>Relative:</strong>{' '}
+              {contract.customerPaymentConfirmed ? 'Marked Payment Done' : 'Pending payment'}
+            </span>
+            <span>
+              <strong>Caretaker:</strong>{' '}
+              {contract.caretakerPaymentConfirmed
+                ? 'Confirmed Receipt'
+                : contract.status === 'PAYMENT_DISPUTED'
+                  ? 'Refused / Not Received'
+                  : 'Awaiting confirmation'}
+            </span>
+          </div>
+
+          {contract.paymentReferenceNote && (
+            <p className="text-[11px]">
+              <strong>Payment Ref:</strong> {contract.paymentReferenceNote}
+            </p>
+          )}
         </div>
       )}
 
       {/* Action buttons (minimum 44px touch targets) */}
       <div className="flex flex-wrap items-center gap-2 pt-0.5">
+        {/* Dual Payment Actions */}
+        {isCustomer &&
+          contract.status === 'COMPLETED_PENDING_SETTLEMENT' &&
+          !contract.customerPaymentConfirmed &&
+          onMarkPaymentDone && (
+            <Button
+              variant="primary"
+              onClick={() => onMarkPaymentDone(contract)}
+              disabled={busyAction === contract.id}
+              className="flex-1 bg-emerald-700 hover:bg-emerald-800"
+            >
+              <Banknote className="h-4 w-4" aria-hidden="true" />
+              <span>Mark Payment Done</span>
+            </Button>
+          )}
+
+        {isCaretaker &&
+          contract.status === 'COMPLETED_PENDING_SETTLEMENT' &&
+          contract.customerPaymentConfirmed && (
+            <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2">
+              {onRefusePayment && (
+                <Button
+                  variant="danger"
+                  onClick={() => onRefusePayment(contract)}
+                  disabled={busyAction === contract.id}
+                >
+                  <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                  <span>Refuse / Not Received</span>
+                </Button>
+              )}
+              {onConfirmPayment && (
+                <Button
+                  variant="primary"
+                  onClick={() => onConfirmPayment(contract)}
+                  loading={busyAction === contract.id}
+                  className="bg-emerald-700 hover:bg-emerald-800"
+                >
+                  <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                  <span>Confirm Payment Received</span>
+                </Button>
+              )}
+            </div>
+          )}
+
+        {(contract.status === 'PAYMENT_DISPUTED' || contract.status === 'DISPUTE_RESOLVED') && (
+          <Link
+            to={`${disputeBasePath}/${contract.id}`}
+            className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl px-4 text-xs font-bold shadow-xs transition-colors ${
+              contract.status === 'PAYMENT_DISPUTED'
+                ? 'bg-rose-700 text-white hover:bg-rose-800'
+                : 'border border-indigo-200 bg-indigo-50 text-indigo-900 hover:bg-indigo-100'
+            }`}
+          >
+            <Scale className="h-4 w-4" aria-hidden="true" />
+            <span>
+              {contract.status === 'PAYMENT_DISPUTED'
+                ? 'Open 3-Way Dispute Room'
+                : 'View Dispute Resolution'}
+            </span>
+          </Link>
+        )}
         {contract.myReviewId && !contract.myReviewSubmitted && onOpenFeedback && (
           <Button
             variant="primary"

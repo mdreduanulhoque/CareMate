@@ -154,6 +154,25 @@ public class HireContract {
         }
     }
 
+    public void markCustomerPaymentDone(String referenceNote) {
+        this.customerPaymentConfirmed = true;
+        this.paymentReferenceNote = referenceNote;
+    }
+
+    public void confirmCaretakerPaymentReceived() {
+        this.caretakerPaymentConfirmed = true;
+        this.status = ContractStatus.CLOSED_PAID;
+    }
+
+    public void markPaymentDisputed() {
+        this.caretakerPaymentConfirmed = false;
+        this.status = ContractStatus.PAYMENT_DISPUTED;
+    }
+
+    public void resolvePaymentDispute() {
+        this.status = ContractStatus.DISPUTE_RESOLVED;
+    }
+
     public Long getId() {
         return id;
     }

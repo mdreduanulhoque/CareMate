@@ -125,7 +125,7 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
 
         if (destination.startsWith(TOPIC_DISPUTE_PREFIX)) {
             String contractId = extractSingleSegment(destination, TOPIC_DISPUTE_PREFIX);
-            chatRoomAuthorizationService.authorizeDisputeRoom(principal, contractId);
+            chatRoomAuthorizationService.authorizeDisputeRoom(principal, contractId, false);
             return;
         }
 
@@ -147,7 +147,7 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
 
         if (destination.startsWith(APP_DISPUTE_PREFIX)) {
             String contractId = extractSingleSegment(destination, APP_DISPUTE_PREFIX);
-            chatRoomAuthorizationService.authorizeDisputeRoom(principal, contractId);
+            chatRoomAuthorizationService.authorizeDisputeRoom(principal, contractId, true);
             return;
         }
 

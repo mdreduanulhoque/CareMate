@@ -76,12 +76,37 @@ export function AppShell() {
           return;
         }
 
+        // Suppress dispute chat toast when already inside that exact dispute room
+        if (
+          event.eventType === 'DISPUTE_NEW_MESSAGE' &&
+          event.contractId &&
+          location.pathname.endsWith(`/disputes/${event.contractId}`)
+        ) {
+          return;
+        }
+
+        const isDisputeEvent = [
+          'PAYMENT_DISPUTED',
+          'DISPUTE_ADMIN_JOINED',
+          'DISPUTE_RESOLVED',
+          'DISPUTE_NEW_MESSAGE',
+        ].includes(event.eventType);
+
         let actionTo = null;
         let actionLabel = 'View';
         if (event.roomId) {
           const base = user.role === 'CUSTOMER' ? '/customer/chats' : '/caretaker/chats';
           actionTo = `${base}/${encodeURIComponent(event.roomId)}`;
           actionLabel = 'Open Chat';
+        } else if (event.contractId && isDisputeEvent) {
+          const base =
+            user.role === 'ADMIN'
+              ? '/admin/disputes'
+              : user.role === 'CARETAKER'
+                ? '/caretaker/disputes'
+                : '/customer/disputes';
+          actionTo = `${base}/${event.contractId}`;
+          actionLabel = 'Open Dispute';
         } else if (event.contractId) {
           if (user.role === 'CUSTOMER') {
             actionTo = '/customer/hires';
@@ -124,12 +149,19 @@ export function AppShell() {
             return;
           }
           const isCert = event.eventType === 'NEW_CERTIFICATION';
+          const isDispute = event.eventType === 'PAYMENT_DISPUTE';
           setLiveToast({
             id: Date.now(),
             title: event.title,
             message: event.message,
-            actionTo: isCert ? '/admin/certifications' : '/admin/applications',
-            actionLabel: isCert ? 'Review Cert' : 'Review App',
+            actionTo: isDispute
+              ? event.entityId
+                ? `/admin/disputes/${event.entityId}`
+                : '/admin/disputes'
+              : isCert
+                ? '/admin/certifications'
+                : '/admin/applications',
+            actionLabel: isDispute ? 'Open Dispute' : isCert ? 'Review Cert' : 'Review App',
           });
         })
       );

@@ -2,9 +2,11 @@ package com.carebridge.chat;
 
 import com.carebridge.booking.ContactUnlock;
 import com.carebridge.booking.ContactUnlockRepository;
+import com.carebridge.booking.HireContract;
 import com.carebridge.caretaker.CaretakerProfile;
 import com.carebridge.caretaker.CaretakerProfileRepository;
 import com.carebridge.chat.dto.ChatMessageResponse;
+import com.carebridge.chat.dto.DisputeRoomDetailResponse;
 import com.carebridge.chat.dto.NegotiationRoomDetailResponse;
 import com.carebridge.chat.dto.NegotiationRoomSummaryResponse;
 import com.carebridge.common.BadRequestException;
@@ -13,6 +15,9 @@ import com.carebridge.common.NotFoundException;
 import com.carebridge.common.TransactionCommitHooks;
 import com.carebridge.notification.RealtimeEventDispatcher;
 import com.carebridge.notification.dto.UserNotificationEvent;
+import com.carebridge.payment.PaymentDispute;
+import com.carebridge.payment.PaymentDisputeRepository;
+import com.carebridge.payment.dto.PaymentDisputeResponse;
 import com.carebridge.security.CareBridgeUserPrincipal;
 import com.carebridge.user.Role;
 import com.carebridge.user.User;
@@ -39,10 +44,13 @@ public class ChatService {
     private static final int MAX_HISTORY_LIMIT = 200;
     private static final int PREVIEW_MAX_LENGTH = 100;
     private static final String TOPIC_NEGOTIATION_PREFIX = "/topic/chat/negotiation/";
+    private static final String TOPIC_DISPUTE_PREFIX = "/topic/chat/dispute/";
+    private static final String DISPUTE_ROOM_PREFIX = "DISPUTE:";
 
     private final ContactUnlockRepository contactUnlockRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final CaretakerProfileRepository caretakerProfileRepository;
+    private final PaymentDisputeRepository paymentDisputeRepository;
     private final UserRepository userRepository;
     private final ChatRoomAuthorizationService chatRoomAuthorizationService;
     private final SimpMessagingTemplate messagingTemplate;
@@ -52,6 +60,7 @@ public class ChatService {
             ContactUnlockRepository contactUnlockRepository,
             ChatMessageRepository chatMessageRepository,
             CaretakerProfileRepository caretakerProfileRepository,
+            PaymentDisputeRepository paymentDisputeRepository,
             UserRepository userRepository,
             ChatRoomAuthorizationService chatRoomAuthorizationService,
             SimpMessagingTemplate messagingTemplate,
@@ -60,6 +69,7 @@ public class ChatService {
         this.contactUnlockRepository = contactUnlockRepository;
         this.chatMessageRepository = chatMessageRepository;
         this.caretakerProfileRepository = caretakerProfileRepository;
+        this.paymentDisputeRepository = paymentDisputeRepository;
         this.userRepository = userRepository;
         this.chatRoomAuthorizationService = chatRoomAuthorizationService;
         this.messagingTemplate = messagingTemplate;
@@ -186,6 +196,97 @@ public class ChatService {
                             sender.getFullName()
                     )
             );
+        });
+
+        return response;
+    }
+
+    @Transactional(readOnly = true)
+    public DisputeRoomDetailResponse getDisputeRoomDetail(
+            CareBridgeUserPrincipal requester,
+            Long contractId,
+            int limit
+    ) {
+        HireContract contract = chatRoomAuthorizationService.authorizeDisputeRoom(
+                requester,
+                String.valueOf(contractId),
+                false
+        );
+        PaymentDispute dispute = paymentDisputeRepository.findByContractIdWithDetails(contract.getId())
+                .orElseThrow(() -> new NotFoundException("Payment dispute not found for this contract."));
+
+        String roomId = DISPUTE_ROOM_PREFIX + contract.getId();
+        int safeLimit = Math.clamp(limit <= 0 ? DEFAULT_HISTORY_LIMIT : limit, 1, MAX_HISTORY_LIMIT);
+        Page<ChatMessage> page = chatMessageRepository.findByRoomIdOrderBySentAtDescIdDesc(
+                roomId,
+                PageRequest.of(0, safeLimit)
+        );
+
+        List<ChatMessage> chronological = new ArrayList<>(page.getContent());
+        Collections.reverse(chronological);
+
+        List<ChatMessageResponse> messages = chronological.stream()
+                .map(ChatMessageResponse::from)
+                .toList();
+
+        return new DisputeRoomDetailResponse(PaymentDisputeResponse.from(dispute), messages, page.hasNext());
+    }
+
+    @Transactional
+    public ChatMessageResponse sendDisputeMessage(
+            CareBridgeUserPrincipal senderPrincipal,
+            Long contractId,
+            String rawContent
+    ) {
+        HireContract contract = chatRoomAuthorizationService.authorizeDisputeRoom(
+                senderPrincipal,
+                String.valueOf(contractId),
+                true
+        );
+        String sanitizedContent = sanitizeMessageContent(rawContent);
+
+        User sender = userRepository.findById(senderPrincipal.getUserId())
+                .orElseThrow(() -> new NotFoundException("Sender account not found."));
+
+        // If Admin posts into an OPEN dispute room, automatically move dispute to UNDER_REVIEW
+        if (sender.getRole() == Role.ADMIN) {
+            paymentDisputeRepository.findByContractIdWithDetails(contract.getId())
+                    .ifPresent(dispute -> {
+                        dispute.assignAdminUnderReview(sender);
+                        paymentDisputeRepository.save(dispute);
+                    });
+        }
+
+        String roomId = DISPUTE_ROOM_PREFIX + contract.getId();
+        ChatMessage saved = chatMessageRepository.saveAndFlush(new ChatMessage(
+                roomId,
+                ChatRoomType.DISPUTE,
+                sender,
+                contract.getId(),
+                sanitizedContent
+        ));
+
+        ChatMessageResponse response = ChatMessageResponse.from(saved);
+        String preview = buildPreview(sanitizedContent);
+        Long customerId = contract.getCustomer().getId();
+        Long caretakerId = contract.getCaretaker().getId();
+
+        TransactionCommitHooks.runAfterCommit(() -> {
+            messagingTemplate.convertAndSend(TOPIC_DISPUTE_PREFIX + contract.getId(), response);
+            UserNotificationEvent alert = UserNotificationEvent.forContract(
+                    "DISPUTE_NEW_MESSAGE",
+                    contract.getId(),
+                    "Dispute Room #" + contract.getId() + " — " + sender.getFullName(),
+                    preview,
+                    sender.getId(),
+                    sender.getFullName()
+            );
+            if (!sender.getId().equals(customerId)) {
+                realtimeEventDispatcher.publishUserNotification(customerId, alert);
+            }
+            if (!sender.getId().equals(caretakerId)) {
+                realtimeEventDispatcher.publishUserNotification(caretakerId, alert);
+            }
         });
 
         return response;

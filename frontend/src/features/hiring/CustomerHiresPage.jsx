@@ -2,10 +2,12 @@ import { BriefcaseMedical, RefreshCw, Search } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import * as hireApi from '../../api/hireApi';
+import * as paymentDisputeApi from '../../api/paymentDisputeApi';
 import * as reviewApi from '../../api/reviewApi';
 import { AlertBanner } from '../../components/ui/AlertBanner';
 import { Button } from '../../components/ui/Button';
 import { useWebSocket } from '../../context/useWebSocket';
+import { PaymentActionModal } from '../disputes/PaymentActionModal';
 import { PendingReviewsBanner } from '../feedback/PendingReviewsBanner';
 import { ReviewFormModal } from '../feedback/ReviewFormModal';
 import { ContractCard } from './ContractCard';
@@ -20,6 +22,12 @@ const CONTRACT_EVENTS = new Set([
   'CONTRACT_ACTIVATED',
   'CONTRACT_COMPLETED_FEEDBACK_READY',
   'REVIEW_RECEIVED',
+  'PAYMENT_MARKED_DONE',
+  'PAYMENT_CONFIRMED_CLOSED',
+  'PAYMENT_DISPUTED',
+  'DISPUTE_ADMIN_JOINED',
+  'DISPUTE_RESOLVED',
+  'DISPUTE_NEW_MESSAGE',
 ]);
 
 const FILTER_TABS = [
@@ -45,6 +53,8 @@ export function CustomerHiresPage() {
 
   const [modalState, setModalState] = useState(null); // { mode: 'cancel' | 'endEarly', contract }
   const [modalError, setModalError] = useState('');
+  const [paymentTarget, setPaymentTarget] = useState(null);
+  const [paymentError, setPaymentError] = useState('');
   const [activeReviewModal, setActiveReviewModal] = useState(null);
   const [busyId, setBusyId] = useState(null);
 
@@ -113,6 +123,25 @@ export function CustomerHiresPage() {
       await loadContracts({ silent: true });
     } catch (err) {
       setModalError(err.message || 'Could not update contract status.');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleConfirmPaymentDone(referenceNote) {
+    if (!paymentTarget) return;
+    setBusyId(paymentTarget.id);
+    setPaymentError('');
+    setFeedback('');
+    try {
+      await paymentDisputeApi.markCustomerPaymentDone(paymentTarget.id, referenceNote);
+      setFeedback(
+        `Marked payment done for contract #${paymentTarget.id}. ${paymentTarget.caretakerFullName} has been notified to confirm receipt.`
+      );
+      setPaymentTarget(null);
+      await loadContracts({ silent: true });
+    } catch (err) {
+      setPaymentError(err.message || 'Could not record payment confirmation.');
     } finally {
       setBusyId(null);
     }
@@ -220,6 +249,10 @@ export function CustomerHiresPage() {
                 setModalState({ mode: 'endEarly', contract: target });
               }}
               onOpenFeedback={handleOpenContractFeedback}
+              onMarkPaymentDone={(target) => {
+                setPaymentError('');
+                setPaymentTarget(target);
+              }}
             />
           ))}
         </div>
@@ -233,6 +266,17 @@ export function CustomerHiresPage() {
           error={modalError}
           onClose={() => setModalState(null)}
           onConfirm={handleConfirmModal}
+        />
+      )}
+
+      {paymentTarget && (
+        <PaymentActionModal
+          mode="customerDone"
+          contract={paymentTarget}
+          submitting={busyId === paymentTarget.id}
+          error={paymentError}
+          onClose={() => setPaymentTarget(null)}
+          onConfirm={handleConfirmPaymentDone}
         />
       )}
 

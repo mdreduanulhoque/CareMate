@@ -1,13 +1,15 @@
 import { CalendarCheck2, RefreshCw, ShieldAlert } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import * as hireApi from '../../api/hireApi';
+import * as paymentDisputeApi from '../../api/paymentDisputeApi';
 import * as reviewApi from '../../api/reviewApi';
 import { AlertBanner } from '../../components/ui/AlertBanner';
 import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../context/useAuth';
 import { useWebSocket } from '../../context/useWebSocket';
 import { getTodayDhakaDateString } from '../../utils/dhakaTime';
+import { PaymentActionModal } from '../disputes/PaymentActionModal';
 import { PendingReviewsBanner } from '../feedback/PendingReviewsBanner';
 import { ReviewFormModal } from '../feedback/ReviewFormModal';
 import { ContractCard } from './ContractCard';
@@ -22,6 +24,12 @@ const CONTRACT_EVENTS = new Set([
   'CONTRACT_ACTIVATED',
   'CONTRACT_COMPLETED_FEEDBACK_READY',
   'REVIEW_RECEIVED',
+  'PAYMENT_MARKED_DONE',
+  'PAYMENT_CONFIRMED_CLOSED',
+  'PAYMENT_DISPUTED',
+  'DISPUTE_ADMIN_JOINED',
+  'DISPUTE_RESOLVED',
+  'DISPUTE_NEW_MESSAGE',
 ]);
 
 const BOOKING_TABS = [
@@ -37,6 +45,7 @@ const BOOKING_TABS = [
 export function CaretakerBookingsPage() {
   const { user } = useAuth();
   const { isConnected, subscribe } = useWebSocket();
+  const navigate = useNavigate();
 
   const isUnverified = !user?.caretakerApproved;
 
@@ -50,6 +59,8 @@ export function CaretakerBookingsPage() {
 
   const [modalState, setModalState] = useState(null);
   const [modalError, setModalError] = useState('');
+  const [refuseTarget, setRefuseTarget] = useState(null);
+  const [refuseError, setRefuseError] = useState('');
   const [activeReviewModal, setActiveReviewModal] = useState(null);
   const [busyId, setBusyId] = useState(null);
 
@@ -124,6 +135,37 @@ export function CaretakerBookingsPage() {
       await loadBookings({ silent: true });
     } catch (err) {
       setModalError(err.message || 'Could not update booking.');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleConfirmPaymentReceived(contract) {
+    setBusyId(contract.id);
+    setError('');
+    setFeedback('');
+    try {
+      await paymentDisputeApi.confirmCaretakerPaymentReceived(contract.id);
+      setFeedback(`Confirmed payment receipt for contract #${contract.id}. Contract is now closed.`);
+      await loadBookings({ silent: true });
+    } catch (err) {
+      setError(err.message || 'Could not confirm payment receipt.');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleConfirmRefusePayment(statement) {
+    if (!refuseTarget) return;
+    setBusyId(refuseTarget.id);
+    setRefuseError('');
+    try {
+      await paymentDisputeApi.refuseCaretakerPayment(refuseTarget.id, statement);
+      const disputedContractId = refuseTarget.id;
+      setRefuseTarget(null);
+      navigate(`/caretaker/disputes/${disputedContractId}`);
+    } catch (err) {
+      setRefuseError(err.message || 'Could not open payment dispute.');
     } finally {
       setBusyId(null);
     }
@@ -260,6 +302,11 @@ export function CaretakerBookingsPage() {
                 setModalState({ mode: 'endEarly', contract: target });
               }}
               onOpenFeedback={handleOpenContractFeedback}
+              onConfirmPayment={handleConfirmPaymentReceived}
+              onRefusePayment={(target) => {
+                setRefuseError('');
+                setRefuseTarget(target);
+              }}
             />
           ))}
         </div>
@@ -273,6 +320,17 @@ export function CaretakerBookingsPage() {
           error={modalError}
           onClose={() => setModalState(null)}
           onConfirm={handleConfirmModal}
+        />
+      )}
+
+      {refuseTarget && (
+        <PaymentActionModal
+          mode="caretakerRefuse"
+          contract={refuseTarget}
+          submitting={busyId === refuseTarget.id}
+          error={refuseError}
+          onClose={() => setRefuseTarget(null)}
+          onConfirm={handleConfirmRefusePayment}
         />
       )}
 

@@ -57,13 +57,18 @@ Use this file together with [CareMate.md](./CareMate.md), [AGENTS.md](./AGENTS.m
 - Immediate dual pending review generation on **End Service Early** as well, with microsecond timestamp alignment (`ChronoUnit.MICROS`) matching SQL `TIMESTAMP(6)`.
 - Bidirectional Feedback API (`FeedbackController` at `/api/reviews`: `/pending`, `/authored`, `/contract/{id}`, `POST /{id}/submit`, `PUT /{id}` 7-day edit with `edited=true` and immutable `editableUntil`, `/caretaker/{id}`, `/customer/{id}`, `/admin`), plus live customer trust ratings (`customerAvgRating`, `customerWorkAgainPercentage`, `customerReviewCount`) and viewer feedback flags wired into `HireContractResponse`.
 - Mobile-first Feedback UI: `ReviewFormModal` (1–5 star picker, role-specific Yes/No repeat-engagement prompt, 7-day window notice), `ReviewItemCard` (with `"Edited"` badge + updated timestamp & lock indicator), `PendingReviewsBanner`, `CustomerReviewsModal` on Caretaker incoming requests, and Verified Family Reviews on `CaretakerPublicProfilePage`.
-- **Current Verified Baseline:** `85/85` backend tests passing, frontend `npm run lint` (0 errors, 0 warnings) + chunked `npm run build` clean, live XAMPP MariaDB verified at Flyway `V5` (`ddl-auto=validate`).
+
+### Phase 7 — Dual Payment Confirmation, Real-Time 3-Way Admin Dispute Mediation & Admin Users (Done)
+- Flyway `V6__create_payment_disputes_table.sql` (`payment_disputes` table with `UNIQUE(contract_id)`, `OPEN`/`UNDER_REVIEW`/`RESOLVED` status, customer/caretaker statements, Admin resolution note, and timestamps).
+- Dual Payment Confirmation & Dispute Mediation API (`PaymentAndDisputeController` + `PaymentAndDisputeService`): Customer `POST /api/payments/contracts/{id}/customer-done` (with optional Cash/bKash/Nagad/Bank reference note), Caretaker `POST /caretaker-confirm` (`CLOSED_PAID`) or `POST /caretaker-refuse` (`PAYMENT_DISPUTED` + instant `/topic/admin/alerts` `PAYMENT_DISPUTE` alert), participant `PUT /api/disputes/contract/{id}/statement`, Admin `POST /join` (`UNDER_REVIEW`) & `POST /resolve` (`DISPUTE_RESOLVED`).
+- Real-Time **3-Way WebSocket Dispute Mediation Room**: enabled strict 3-way authorization in `ChatRoomAuthorizationService` & `StompAuthChannelInterceptor` for `/topic/chat/dispute/{contractId}` and `/app/chat/dispute/{contractId}` (exclusively contract Customer, contract Caretaker, or `ROLE_ADMIN`, locking sends read-only once `DISPUTE_RESOLVED`), backed by persisted `chat_messages` (`room_type = DISPUTE`, `contract_id`).
+- Admin Users Management API (`AdminUserController` at `/api/admin/users`: role/keyword search without password leakage, non-admin activate/deactivate moderation, and approved caretaker availability moderation with live `/topic/feed/availability` broadcast).
+- Mobile-first UI: `PaymentActionModal`, upgraded `ContractCard` dual payment controls, `DisputeMediationRoomPage` (collapsible pinned payment/contract context + role-distinguished messages for Relative, Caretaker, and Admin Mediator + inline Admin resolve), `AdminDisputesPage`, and `AdminUsersPage` — zero placeholder tabs remain across all 3 roles.
+- **Current Verified Baseline:** `87/87` backend tests passing (including live 3-way STOMP dispute tests), frontend `npm run lint` (0 errors, 0 warnings) + chunked `npm run build` clean, live XAMPP MariaDB verified at Flyway `V6` (`ddl-auto=validate`).
 
 ---
 
 ## Remaining Phases (Awaiting Explicit Permission Per Phase)
 
-- **NEXT -> Phase 7: Dual Payment Confirmation & Real-Time 3-Way Admin Dispute Mediation**
-  - Flyway `V6` (`payment_disputes`), Customer Payment Done, Caretaker Confirm (`CLOSED_PAID`) / Refuse (`PAYMENT_DISPUTED`), 3-Way WebSocket Dispute Room (`/topic/chat/dispute/{contractId}`), Admin resolution (`DISPUTE_RESOLVED`) & Admin Users tab.
-- **Phase 8: End-to-End Flow Verification, Security Hardening & Mobile UX Polish**
+- **NEXT -> Phase 8: End-to-End Flow Verification, Security Hardening & Mobile UX Polish**
   - Full Section 2.4 RBAC matrix audit, end-to-end verification of Flows 5.1–5.3 on mobile (`390x844`) & desktop, security sweep, and root `README.md`.
