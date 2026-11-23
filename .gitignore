@@ -1,0 +1,33 @@
+# Local Secrets & Environment Config (NEVER COMMIT)
+.env
+.env.*
+!.env.example
+backend/src/main/resources/application-local.properties
+backend/src/main/resources/application-local.yml
+
+# Java / Maven
+backend/target/
+*.jar
+*.war
+*.ear
+*.class
+hs_err_pid*
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/.vite/
+*.local
+
+# Uploaded runtime media (user avatars)
+backend/uploads/
+uploads/
+
+# IDEs & OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+*.log
